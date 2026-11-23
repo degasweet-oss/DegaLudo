@@ -38,7 +38,7 @@ private val Red = Color(0xFFE94B55)
 private val Green = Color(0xFF24B879)
 private val Yellow = Color(0xFFFFC542)
 private val Blue = Color(0xFF438BEE)
-private val colors = listOf(Red, Green, Yellow, Blue)
+private val playerColors = listOf(Red, Green, Yellow, Blue)
 
 private val track = listOf(
     6 to 1, 6 to 2, 6 to 3, 6 to 4, 6 to 5,
@@ -69,7 +69,9 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Page { HOME, SETUP, GAME, SHOP, OTHER }
+private enum class Page {
+    HOME, SETUP, GAME, SHOP, OTHER
+}
 
 @Composable
 private fun DegaApp() {
@@ -85,19 +87,33 @@ private fun DegaApp() {
             onShop = { page = Page.SHOP },
             onOther = { page = Page.OTHER }
         )
+
         Page.SETUP -> SetupScreen(
-            count, names,
+            count = count,
+            names = names,
             onCount = { count = it },
             onNames = { names = it },
             onBack = { page = Page.HOME },
             onStart = { page = Page.GAME }
         )
+
         Page.GAME -> GameScreen(
-            count, names,
+            count,
+            names,
             onBack = { page = Page.HOME }
         )
-        Page.SHOP -> InfoScreen("متجر DEGA", "العملات والجواهر والخلفيات ستضاف في مرحلة المتجر.", "🛍️") { page = Page.HOME }
-        Page.OTHER -> InfoScreen("قريبًا", "الأصدقاء والبطولات والمهام والملف الشخصي.", "🏆") { page = Page.HOME }
+
+        Page.SHOP -> InfoScreen(
+            "متجر DEGA",
+            "العملات والجواهر والخلفيات ستضاف في مرحلة المتجر.",
+            "🛍️"
+        ) { page = Page.HOME }
+
+        Page.OTHER -> InfoScreen(
+            "قريبًا",
+            "الأصدقاء والبطولات والمهام والملف الشخصي.",
+            "🏆"
+        ) { page = Page.HOME }
     }
 }
 
@@ -109,10 +125,17 @@ private fun ScreenTitle(title: String, onBack: (() -> Unit)? = null) {
                 "‹",
                 color = Gold,
                 fontSize = 34.sp,
-                modifier = Modifier.clickable { onBack() }.padding(end = 12.dp)
+                modifier = Modifier
+                    .clickable { onBack() }
+                    .padding(end = 12.dp)
             )
         }
-        Text(title, color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Black)
+        Text(
+            title,
+            color = Gold,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Black
+        )
     }
 }
 
@@ -123,42 +146,69 @@ private fun HomeScreen(
     onOther: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().background(Dark)
-            .verticalScroll(rememberScrollState()).padding(18.dp),
+        Modifier
+            .fillMaxSize()
+            .background(Dark)
+            .verticalScroll(rememberScrollState())
+            .padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         ScreenTitle("DEGA LUDO")
         Spacer(Modifier.height(24.dp))
+
         Box(
-            Modifier.fillMaxWidth().height(190.dp)
+            Modifier
+                .fillMaxWidth()
+                .height(190.dp)
                 .clip(RoundedCornerShape(26.dp))
                 .background(
                     androidx.compose.ui.graphics.Brush.linearGradient(
-                        listOf(Color(0xFF263D60), Color(0xFF151F32), Color(0xFF594323))
+                        listOf(
+                            Color(0xFF263D60),
+                            Color(0xFF151F32),
+                            Color(0xFF594323)
+                        )
                     )
                 ),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🎲", fontSize = 62.sp)
-                Text("DEGA LUDO", color = Gold, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                Text(
+                    "DEGA LUDO",
+                    color = Gold,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black
+                )
                 Text("PLAY • WIN • ENJOY", color = Color.White, fontSize = 12.sp)
             }
         }
+
         Spacer(Modifier.height(18.dp))
+
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Balance("🪙", "1,250")
-            Balance("💎", "25")
+            Balance("🪙", "1,250", Modifier.weight(1f))
+            Balance("💎", "25", Modifier.weight(1f))
         }
+
         Spacer(Modifier.height(22.dp))
+
         Button(
             onClick = onPlay,
-            modifier = Modifier.fillMaxWidth().height(60.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Gold),
             shape = RoundedCornerShape(18.dp)
         ) {
-            Text("🎮  العب الآن", color = Dark, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "🎮  العب الآن",
+                color = Dark,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
+
         Spacer(Modifier.height(16.dp))
         MenuItem("🛍️", "متجر DEGA", onShop)
         MenuItem("🏆", "البطولات والجوائز", onOther)
@@ -169,23 +219,43 @@ private fun HomeScreen(
     }
 }
 
+/* تم إصلاح weight هنا: يتم تمرير Modifier من Row */
 @Composable
-private fun Balance(icon: String, amount: String) {
+private fun Balance(
+    icon: String,
+    amount: String,
+    modifier: Modifier = Modifier
+) {
     Column(
-        Modifier.weight(1f).clip(RoundedCornerShape(16.dp))
-            .background(Panel).padding(16.dp)
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Panel)
+            .padding(16.dp)
     ) {
         Text(icon, fontSize = 23.sp)
-        Text(amount, color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Text(
+            amount,
+            color = Gold,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
 
 @Composable
-private fun MenuItem(icon: String, title: String, action: () -> Unit) {
+private fun MenuItem(
+    icon: String,
+    title: String,
+    action: () -> Unit
+) {
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 5.dp)
-            .clip(RoundedCornerShape(15.dp)).background(Panel)
-            .clickable { action() }.padding(16.dp),
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp)
+            .clip(RoundedCornerShape(15.dp))
+            .background(Panel)
+            .clickable { action() }
+            .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(icon, fontSize = 25.sp)
@@ -206,13 +276,18 @@ private fun SetupScreen(
     onStart: () -> Unit
 ) {
     Column(
-        Modifier.fillMaxSize().background(Dark)
-            .verticalScroll(rememberScrollState()).padding(18.dp)
+        Modifier
+            .fillMaxSize()
+            .background(Dark)
+            .verticalScroll(rememberScrollState())
+            .padding(18.dp)
     ) {
         ScreenTitle("إعداد المباراة", onBack)
         Spacer(Modifier.height(24.dp))
+
         Text("عدد اللاعبين", color = Color.White, fontSize = 17.sp)
         Spacer(Modifier.height(10.dp))
+
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(2, 3, 4).forEach { n ->
                 Button(
@@ -226,26 +301,39 @@ private fun SetupScreen(
                 }
             }
         }
+
         Spacer(Modifier.height(22.dp))
         Text("أسماء اللاعبين", color = Color.White, fontSize = 17.sp)
+
         repeat(count) { i ->
             OutlinedTextField(
                 value = names[i],
                 onValueChange = { value ->
                     onNames(names.toMutableList().also { it[i] = value })
                 },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 5.dp),
                 label = { Text("اللاعب ${i + 1}") },
                 singleLine = true
             )
         }
+
         Spacer(Modifier.height(20.dp))
+
         Button(
             onClick = onStart,
-            modifier = Modifier.fillMaxWidth().height(55.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Gold)
         ) {
-            Text("ابدأ المباراة", color = Dark, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "ابدأ المباراة",
+                color = Dark,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
@@ -262,11 +350,18 @@ private fun GameScreen(
     var rolling by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("اضغط على النرد لبدء اللعب") }
     var winner by remember { mutableIntStateOf(-1) }
-    val positions = remember { mutableStateListOf<Int>().apply { repeat(16) { add(0) } } }
+
+    val positions = remember {
+        mutableStateListOf<Int>().apply {
+            repeat(16) { add(0) }
+        }
+    }
+
     val rotation by animateFloatAsState(
         targetValue = if (rolling) 720f else 0f,
         label = "diceRoll"
     )
+
     val legal = (0..3).filter { piece ->
         val p = positions[turn * 4 + piece]
         (p == 0 && dice == 6) || (p in 1..56 && p + dice <= 57)
@@ -278,14 +373,17 @@ private fun GameScreen(
                 dice = Random.nextInt(1, 7)
                 delay(75)
             }
+
             dice = Random.nextInt(1, 7)
             rolling = false
             rolled = true
             message = "ظهر الرقم $dice"
+
             val available = (0..3).filter { piece ->
                 val p = positions[turn * 4 + piece]
                 (p == 0 && dice == 6) || (p in 1..56 && p + dice <= 57)
             }
+
             if (available.isEmpty()) {
                 message = "لا توجد حركة متاحة"
                 rolled = false
@@ -296,7 +394,9 @@ private fun GameScreen(
                 }
                 message = "تحركت القطعة تلقائيًا"
                 rolled = false
-                if (dice != 6 && winner == -1) turn = (turn + 1) % playerCount
+                if (dice != 6 && winner == -1) {
+                    turn = (turn + 1) % playerCount
+                }
             } else {
                 message = "اختر القطعة التي تريد تحريكها"
             }
@@ -304,50 +404,90 @@ private fun GameScreen(
     }
 
     Column(
-        Modifier.fillMaxSize().background(Dark)
-            .verticalScroll(rememberScrollState()).padding(10.dp)
+        Modifier
+            .fillMaxSize()
+            .background(Dark)
+            .verticalScroll(rememberScrollState())
+            .padding(10.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("‹", color = Gold, fontSize = 34.sp, modifier = Modifier.clickable { onBack() })
+            Text(
+                "‹",
+                color = Gold,
+                fontSize = 34.sp,
+                modifier = Modifier.clickable { onBack() }
+            )
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text("DEGA LUDO", color = Gold, fontSize = 21.sp, fontWeight = FontWeight.Black)
+                Text(
+                    "DEGA LUDO",
+                    color = Gold,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Black
+                )
                 Text("مباراة محلية", color = Color.LightGray, fontSize = 12.sp)
             }
             Text("🪙 1,250", color = Gold, fontWeight = FontWeight.Bold)
         }
+
         Spacer(Modifier.height(12.dp))
+
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             repeat(playerCount) { i ->
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(12.dp))
-                        .background(if (turn == i) colors[i].copy(alpha = .25f) else Panel)
-                        .border(if (turn == i) 2.dp else 1.dp,
-                            if (turn == i) colors[i] else Panel, RoundedCornerShape(12.dp))
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (turn == i) playerColors[i].copy(alpha = .25f)
+                            else Panel
+                        )
+                        .border(
+                            if (turn == i) 2.dp else 1.dp,
+                            if (turn == i) playerColors[i] else Panel,
+                            RoundedCornerShape(12.dp)
+                        )
                         .padding(7.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Box(Modifier.size(13.dp).clip(CircleShape).background(colors[i]))
+                    Box(
+                        Modifier
+                            .size(13.dp)
+                            .clip(CircleShape)
+                            .background(playerColors[i])
+                    )
                     Text(names[i], color = Color.White, fontSize = 10.sp, maxLines = 1)
-                    Text(if (turn == i) "دوره الآن" else "", color = Gold, fontSize = 10.sp)
+                    Text(
+                        if (turn == i) "دوره الآن" else "",
+                        color = Gold,
+                        fontSize = 10.sp
+                    )
                 }
             }
         }
+
         Spacer(Modifier.height(10.dp))
         LudoBoard(playerCount, positions)
         Spacer(Modifier.height(12.dp))
+
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Column(Modifier.weight(1f)) {
-                Text(if (winner >= 0) "الفائز: ${names[winner]}" else "دور ${names[turn]}",
-                    color = colors[turn], fontWeight = FontWeight.Bold)
+                Text(
+                    if (winner >= 0) "الفائز: ${names[winner]}" else "دور ${names[turn]}",
+                    color = playerColors[turn],
+                    fontWeight = FontWeight.Bold
+                )
                 Text(message, color = Color.LightGray, fontSize = 12.sp)
             }
+
             Box(
-                Modifier.size(82.dp).shadow(12.dp, RoundedCornerShape(18.dp))
+                Modifier
+                    .size(82.dp)
+                    .shadow(12.dp, RoundedCornerShape(18.dp))
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color.White)
                     .clickable(enabled = !rolled && !rolling && winner == -1) {
@@ -363,7 +503,9 @@ private fun GameScreen(
                 )
             }
         }
+
         Spacer(Modifier.height(12.dp))
+
         if (rolled && winner == -1) {
             Text("اختر القطعة:", color = Gold, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -374,21 +516,28 @@ private fun GameScreen(
                                 if (won) winner = turn
                             }
                             rolled = false
-                            if (dice != 6 && winner == -1) turn = (turn + 1) % playerCount
+                            if (dice != 6 && winner == -1) {
+                                turn = (turn + 1) % playerCount
+                            }
                             message = "تم تحريك القطعة"
                         },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors[turn])
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = playerColors[turn]
+                        )
                     ) {
                         Text("قطعة ${piece + 1}", color = Color.White, fontSize = 11.sp)
                     }
                 }
             }
         }
+
         Spacer(Modifier.height(8.dp))
         Text(
             "اضغط على النرد لرميه. عند وجود أكثر من حركة اختر القطعة المناسبة.",
-            color = Color.LightGray, fontSize = 11.sp, textAlign = TextAlign.Center,
+            color = Color.LightGray,
+            fontSize = 11.sp,
+            textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -403,52 +552,89 @@ private fun movePiece(
 ) {
     val index = player * 4 + piece
     val old = positions[index]
-    if (old == 0 && dice == 6) positions[index] = 1
-    else if (old in 1..56 && old + dice <= 57) positions[index] = old + dice
+
+    if (old == 0 && dice == 6) {
+        positions[index] = 1
+    } else if (old in 1..56 && old + dice <= 57) {
+        positions[index] = old + dice
+    }
+
     onWin((0..3).all { positions[player * 4 + it] == 57 })
 }
 
-private fun diceFace(value: Int): String = when (value) {
-    1 -> "⚀"
-    2 -> "⚁"
-    3 -> "⚂"
-    4 -> "⚃"
-    5 -> "⚄"
-    else -> "⚅"
+private fun diceFace(value: Int): String {
+    return when (value) {
+        1 -> "⚀"
+        2 -> "⚁"
+        3 -> "⚂"
+        4 -> "⚃"
+        5 -> "⚄"
+        else -> "⚅"
+    }
 }
 
 @Composable
-private fun LudoBoard(playerCount: Int, positions: List<Int>) {
+private fun LudoBoard(
+    playerCount: Int,
+    positions: List<Int>
+) {
     Canvas(
-        Modifier.fillMaxWidth().aspectRatio(1f)
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
             .shadow(12.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp)).background(Color(0xFFF4F1E8))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFF4F1E8))
     ) {
         val cell = size.width / 15f
+
         fun square(r: Int, c: Int, color: Color) {
-            drawRect(color, Offset(c * cell, r * cell), Size(cell, cell))
-            drawRect(Color(0xFFB8B8B8), Offset(c * cell, r * cell),
-                Size(cell, cell), style = Stroke(1f))
+            drawRect(
+                color,
+                Offset(c * cell, r * cell),
+                Size(cell, cell)
+            )
+            drawRect(
+                Color(0xFFB8B8B8),
+                Offset(c * cell, r * cell),
+                Size(cell, cell),
+                style = Stroke(1f)
+            )
         }
 
         drawRect(Color(0xFFF4F1E8), size = size)
+
         val homes = listOf(
-            Triple(0, 0, Red), Triple(0, 9, Green),
-            Triple(9, 9, Yellow), Triple(9, 0, Blue)
+            Triple(0, 0, Red),
+            Triple(0, 9, Green),
+            Triple(9, 9, Yellow),
+            Triple(9, 0, Blue)
         )
+
         homes.forEach { (r, c, color) ->
-            drawRect(color, Offset(c * cell, r * cell), Size(cell * 6, cell * 6))
+            drawRect(
+                color,
+                Offset(c * cell, r * cell),
+                Size(cell * 6, cell * 6)
+            )
             drawRoundRect(
                 Color.White,
                 Offset((c + 1) * cell, (r + 1) * cell),
                 Size(cell * 4, cell * 4),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(cell * .25f)
             )
-            for (a in 0..1) for (b in 0..1) {
-                drawCircle(
-                    color.copy(alpha = .35f), cell * .36f,
-                    Offset((c + 2 + b * 2) * cell, (r + 2 + a * 2) * cell)
-                )
+
+            for (a in 0..1) {
+                for (b in 0..1) {
+                    drawCircle(
+                        color.copy(alpha = .35f),
+                        cell * .36f,
+                        Offset(
+                            (c + 2 + b * 2) * cell,
+                            (r + 2 + a * 2) * cell
+                        )
+                    )
+                }
             }
         }
 
@@ -462,6 +648,7 @@ private fun LudoBoard(playerCount: Int, positions: List<Int>) {
             }
             square(r, c, special)
         }
+
         for (i in 1..5) {
             square(7, i, Red)
             square(i, 7, Green)
@@ -475,47 +662,83 @@ private fun LudoBoard(playerCount: Int, positions: List<Int>) {
         drawCircle(Color.White, cell * .35f, center)
 
         val starts = listOf(0, 13, 26, 39)
+
         for (p in 0 until playerCount) {
             for (piece in 0..3) {
                 val progress = positions[p * 4 + piece]
+
                 val home = when (p) {
-                    0 -> Offset((2.2f + piece % 2 * 1.6f) * cell,
-                        (2.2f + piece / 2 * 1.6f) * cell)
-                    1 -> Offset((10.2f + piece % 2 * 1.6f) * cell,
-                        (2.2f + piece / 2 * 1.6f) * cell)
-                    2 -> Offset((10.2f + piece % 2 * 1.6f) * cell,
-                        (10.2f + piece / 2 * 1.6f) * cell)
-                    else -> Offset((2.2f + piece % 2 * 1.6f) * cell,
-                        (10.2f + piece / 2 * 1.6f) * cell)
+                    0 -> Offset(
+                        (2.2f + piece % 2 * 1.6f) * cell,
+                        (2.2f + piece / 2 * 1.6f) * cell
+                    )
+                    1 -> Offset(
+                        (10.2f + piece % 2 * 1.6f) * cell,
+                        (2.2f + piece / 2 * 1.6f) * cell
+                    )
+                    2 -> Offset(
+                        (10.2f + piece % 2 * 1.6f) * cell,
+                        (10.2f + piece / 2 * 1.6f) * cell
+                    )
+                    else -> Offset(
+                        (2.2f + piece % 2 * 1.6f) * cell,
+                        (10.2f + piece / 2 * 1.6f) * cell
+                    )
                 }
-                val point = if (progress == 0) home else {
+
+                val point = if (progress == 0) {
+                    home
+                } else {
                     val (r, c) = track[(starts[p] + progress - 1) % track.size]
                     Offset((c + .5f) * cell, (r + .5f) * cell)
                 }
-                drawCircle(Color.Black.copy(alpha = .3f), cell * .39f,
-                    point + Offset(2f, 3f))
-                drawCircle(colors[p], cell * .34f, point)
+
+                drawCircle(
+                    Color.Black.copy(alpha = .3f),
+                    cell * .39f,
+                    point + Offset(2f, 3f)
+                )
+                drawCircle(playerColors[p], cell * .34f, point)
                 drawCircle(Color.White, cell * .34f, point, style = Stroke(2f))
-                drawCircle(Color.White.copy(alpha = .7f), cell * .1f,
-                    point + Offset(-cell * .1f, -cell * .1f))
+                drawCircle(
+                    Color.White.copy(alpha = .7f),
+                    cell * .1f,
+                    point + Offset(-cell * .1f, -cell * .1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun InfoScreen(title: String, description: String, emoji: String, onBack: () -> Unit) {
+private fun InfoScreen(
+    title: String,
+    description: String,
+    emoji: String,
+    onBack: () -> Unit
+) {
     Column(
-        Modifier.fillMaxSize().background(Dark).padding(18.dp),
+        Modifier
+            .fillMaxSize()
+            .background(Dark)
+            .padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         ScreenTitle(title, onBack)
         Spacer(Modifier.height(45.dp))
         Text(emoji, fontSize = 60.sp)
         Spacer(Modifier.height(20.dp))
-        Text(description, color = Color.White, textAlign = TextAlign.Center, fontSize = 16.sp)
+        Text(
+            description,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            fontSize = 16.sp
+        )
         Spacer(Modifier.height(25.dp))
-        Button(onClick = onBack, colors = ButtonDefaults.buttonColors(containerColor = Gold)) {
+        Button(
+            onClick = onBack,
+            colors = ButtonDefaults.buttonColors(containerColor = Gold)
+        ) {
             Text("العودة للرئيسية", color = Dark)
         }
     }
