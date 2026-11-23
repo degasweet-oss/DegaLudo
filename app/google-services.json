@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "162039673897",
+    "project_id": "dega-ludo",
+    "storage_bucket": "dega-ludo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:162039673897:android:8a27e9f48d3cb35af69838",
+        "android_client_info": {
+          "package_name": "com.dega.ludo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtNH8xHA4B-N5d2whn5zrZaw7XG0Ixhpw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
