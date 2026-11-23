@@ -1,28 +1,41 @@
-
 package com.dega.ludo
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import kotlin.random.Random
+
+private val Navy = Color(0xFF101B35)
+private val Gold = Color(0xFFFFD36A)
+private val Red = Color(0xFFE84152)
+private val Green = Color(0xFF20B978)
+private val Yellow = Color(0xFFFFC928)
+private val Blue = Color(0xFF398BFA)
+
+private val playerColors = listOf(Red, Green, Yellow, Blue)
+private val playerNames = listOf("الأحمر", "الأخضر", "الأصفر", "الأزرق")
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,374 +48,401 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val playerColors = listOf(
-    Color(0xFFE53935),
-    Color(0xFF20A65A),
-    Color(0xFFFFC928),
-    Color(0xFF2688E8)
-)
+private fun makeTrack(): List<Pair<Int, Int>> {
+    val result = mutableListOf<Pair<Int, Int>>()
 
-private val playerNames = listOf(
-    "الأحمر", "الأخضر", "الأصفر", "الأزرق"
-)
+    for (x in 6..13) result.add(x to 0)
+    for (y in 1..13) result.add(13 to y)
+    for (x in 12 downTo 0) result.add(x to 13)
+    for (y in 12 downTo 0) result.add(0 to y)
+    for (x in 1..5) result.add(x to 0)
 
-private val track = listOf(
-    6 to 1, 6 to 2, 6 to 3, 6 to 4, 6 to 5,
-    5 to 6, 4 to 6, 3 to 6, 2 to 6, 1 to 6, 0 to 6,
-    0 to 7, 0 to 8,
-    1 to 8, 2 to 8, 3 to 8, 4 to 8, 5 to 8,
-    6 to 9, 6 to 10, 6 to 11, 6 to 12, 6 to 13, 6 to 14,
-    7 to 14, 8 to 14,
-    8 to 13, 8 to 12, 8 to 11, 8 to 10, 8 to 9,
-    9 to 8, 10 to 8, 11 to 8, 12 to 8, 13 to 8, 14 to 8,
-    14 to 7, 14 to 6,
-    13 to 6, 12 to 6, 11 to 6, 10 to 6, 9 to 6,
-    8 to 5, 8 to 4, 8 to 3, 8 to 2, 8 to 1, 8 to 0,
-    7 to 0, 6 to 0
-)
+    return result
+}
+
+private val track = makeTrack()
 
 private val starts = listOf(0, 13, 26, 39)
 
-private val homeLanes = listOf(
-    (1..6).map { 7 to it },
-    (1..6).map { it to 7 },
-    (1..6).map { 7 to (14 - it) },
-    (1..6).map { (14 - it) to 7 }
-)
+private fun homeLane(player: Int): List<Pair<Int, Int>> {
+    return when (player) {
+        0 -> (1..6).map { 7 to it }
+        1 -> (12 downTo 7).map { it to 7 }
+        2 -> (12 downTo 7).map { 7 to it }
+        else -> (1..6).map { it to 7 }
+    }
+}
 
-private val homeSlots = listOf(
-    listOf(1 to 1, 1 to 4, 4 to 1, 4 to 4),
-    listOf(1 to 10, 1 to 13, 4 to 10, 4 to 13),
-    listOf(10 to 10, 10 to 13, 13 to 10, 13 to 13),
-    listOf(10 to 1, 10 to 4, 13 to 1, 13 to 4)
-)
-
-private val safeSquares =
-    setOf(0, 8, 13, 21, 26, 34, 39, 47)
+private fun homeSlots(player: Int): List<Pair<Int, Int>> {
+    return when (player) {
+        0 -> listOf(2 to 2, 4 to 2, 2 to 4, 4 to 4)
+        1 -> listOf(9 to 2, 11 to 2, 9 to 4, 11 to 4)
+        2 -> listOf(9 to 9, 11 to 9, 9 to 11, 11 to 11)
+        else -> listOf(2 to 9, 4 to 9, 2 to 11, 4 to 11)
+    }
+}
 
 private fun piecePosition(
     player: Int,
-    piece: Int,
-    progress: Int
+    step: Int,
+    piece: Int
 ): Pair<Int, Int> {
-    return when {
-        progress == -1 -> homeSlots[player][piece]
-        progress <= 51 ->
-            track[(starts[player] + progress) % 52]
-        else ->
-            homeLanes[player][progress - 52]
+    if (step < 0) {
+        return homeSlots(player)[piece]
+    }
+
+    if (step >= 56) {
+        return 7 to 7
+    }
+
+    if (step >= 51) {
+        return homeLane(player)[step - 51]
+    }
+
+    val index = (starts[player] + step) % 52
+    return track[index]
+}
+
+private fun legalMoves(
+    pieces: List<List<Int>>,
+    player: Int,
+    dice: Int
+): List<Int> {
+    if (dice == 0) return emptyList()
+
+    return (0..3).filter { piece ->
+        val step = pieces[player][piece]
+
+        when {
+            step == -1 -> dice == 6
+            step >= 56 -> false
+            step + dice <= 56 -> true
+            else -> false
+        }
     }
 }
 
 @Composable
-fun DegaLudoGame() {
+private fun DegaLudoGame() {
     var playerCount by remember { mutableIntStateOf(4) }
-    var pieces by remember { mutableStateOf(List(16) { -1 }) }
-    var currentPlayer by remember { mutableIntStateOf(0) }
-    var dice by remember { mutableIntStateOf(1) }
-    var pendingDice by remember { mutableIntStateOf(0) }
-    var legalPieces by remember { mutableStateOf(emptyList<Int>()) }
-    var message by remember { mutableStateOf("اضغط على النرد لبدء اللعب") }
-    var winner by remember { mutableIntStateOf(-1) }
 
-    val activePlayers = when (playerCount) {
-        2 -> listOf(0, 2)
-        3 -> listOf(0, 1, 2)
-        else -> listOf(0, 1, 2, 3)
+    var pieces by remember {
+        mutableStateOf(
+            List(4) { List(4) { -1 } }
+        )
     }
+
+    var currentPlayer by remember { mutableIntStateOf(0) }
+    var dice by remember { mutableIntStateOf(0) }
+    var pendingMoves by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var winner by remember { mutableIntStateOf(-1) }
+    var message by remember { mutableStateOf("اضغط على النرد لبدء اللعب") }
+    var rolling by remember { mutableStateOf(false) }
+
+    val rotation by animateFloatAsState(
+        targetValue = if (rolling) 360f else 0f,
+        label = "diceRotation"
+    )
 
     fun nextTurn() {
-        val position = activePlayers.indexOf(currentPlayer)
-        currentPlayer =
-            activePlayers[(position + 1) % activePlayers.size]
-        pendingDice = 0
-        legalPieces = emptyList()
+        currentPlayer = (currentPlayer + 1) % playerCount
+        dice = 0
+        pendingMoves = emptyList()
+        message = "دور اللاعب ${playerNames[currentPlayer]}"
     }
 
-    fun movePiece(index: Int) {
-        if (index !in legalPieces || pendingDice == 0) return
+    fun movePiece(piece: Int) {
+        if (winner != -1 || piece !in pendingMoves) return
 
-        val newPieces = pieces.toMutableList()
-        val oldProgress = newPieces[index]
-        val newProgress =
-            if (oldProgress == -1) 0
-            else oldProgress + pendingDice
+        val updated = pieces.map { it.toMutableList() }.toMutableList()
+        val oldStep = updated[currentPlayer][piece]
 
-        newPieces[index] = newProgress
+        val newStep = if (oldStep == -1) 0 else oldStep + dice
 
-        val player = index / 4
-        var captured = false
+        updated[currentPlayer][piece] = newStep
 
-        if (newProgress in 0..51) {
-            val globalPosition =
-                (starts[player] + newProgress) % 52
+        // أكل قطع الخصم عند الوقوف على نفس المربع
+        if (newStep in 0..50) {
+            val myIndex = (starts[currentPlayer] + newStep) % 52
 
-            if (globalPosition !in safeSquares) {
-                for (enemy in 0 until 16) {
-                    if (
-                        enemy / 4 != player &&
-                        enemy / 4 in activePlayers &&
-                        newPieces[enemy] in 0..51
-                    ) {
-                        val enemyPosition =
-                            (starts[enemy / 4] + newPieces[enemy]) % 52
+            val safeSquares = listOf(0, 13, 26, 39)
 
-                        if (enemyPosition == globalPosition) {
-                            newPieces[enemy] = -1
-                            captured = true
+            if (myIndex !in safeSquares) {
+                for (enemy in 0 until playerCount) {
+                    if (enemy == currentPlayer) continue
+
+                    for (enemyPiece in 0..3) {
+                        val enemyStep = updated[enemy][enemyPiece]
+
+                        if (enemyStep in 0..50) {
+                            val enemyIndex =
+                                (starts[enemy] + enemyStep) % 52
+
+                            if (enemyIndex == myIndex) {
+                                updated[enemy][enemyPiece] = -1
+                            }
                         }
                     }
                 }
             }
         }
 
-        pieces = newPieces
+        pieces = updated.map { it.toList() }
 
-        val finished = (0..3).all {
-            newPieces[player * 4 + it] == 57
+        val finished = pieces[currentPlayer].all { it >= 56 }
+
+        if (finished) {
+            winner = currentPlayer
+            message = "فاز اللاعب ${playerNames[currentPlayer]}!"
+            pendingMoves = emptyList()
+            return
         }
 
         val rolledSix = dice == 6
 
-        pendingDice = 0
-        legalPieces = emptyList()
-
-        if (finished) {
-            winner = player
-            message = "الفائز هو ${playerNames[player]}!"
-            return
-        }
+        pendingMoves = emptyList()
+        dice = 0
 
         if (rolledSix) {
-            message = "ممتاز! لديك رمية إضافية"
+            message = "رائع! حصلت على 6، ارْمِ مرة أخرى"
         } else {
-            message = if (captured) {
-                "رائع! أكلت قطعة الخصم"
-            } else {
-                "تم تحريك القطعة"
-            }
             nextTurn()
         }
     }
 
     fun rollDice() {
-        if (pendingDice != 0 || winner != -1) return
+        if (winner != -1 || pendingMoves.isNotEmpty()) return
 
-        dice = Random.nextInt(1, 7)
-        pendingDice = dice
+        rolling = true
 
-        val available = (0..3)
-            .map { currentPlayer * 4 + it }
-            .filter { index ->
-                val progress = pieces[index]
-                if (progress == -1) {
-                    dice == 6
-                } else {
-                    progress + dice <= 57
-                }
-            }
+        val result = Random.nextInt(1, 7)
+        dice = result
 
-        legalPieces = available
+        rolling = false
+
+        val available = legalMoves(
+            pieces,
+            currentPlayer,
+            result
+        )
+
+        pendingMoves = available
 
         when {
             available.isEmpty() -> {
-                message = if (dice == 6) {
-                    "لا توجد حركة، ارْمِ مرة أخرى"
+                message = if (result == 6) {
+                    "لا توجد حركة متاحة، ارْمِ مرة أخرى"
                 } else {
                     "لا توجد حركة متاحة"
                 }
 
-                pendingDice = 0
-                legalPieces = emptyList()
-
-                if (dice != 6) nextTurn()
+                if (result != 6) {
+                    nextTurn()
+                }
             }
 
             available.size == 1 -> {
-                message = "حركة تلقائية!"
+                message = "تحريك القطعة المتاحة تلقائيًا"
                 movePiece(available.first())
             }
 
             else -> {
-                message = "اختر القطعة بالضغط عليها"
+                message = "اختر القطعة التي تريد تحريكها"
             }
         }
     }
 
-    fun restartGame() {
-        pieces = List(16) { -1 }
+    fun resetGame() {
+        pieces = List(4) { List(4) { -1 } }
         currentPlayer = 0
-        dice = 1
-        pendingDice = 0
-        legalPieces = emptyList()
+        dice = 0
+        pendingMoves = emptyList()
         winner = -1
-        message = "لعبة جديدة! اضغط على النرد"
+        message = "اضغط على النرد لبدء اللعب"
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF101827)
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Navy)
+            .padding(12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                "DEGA LUDO",
-                color = Color(0xFFFFD45C),
-                fontSize = 29.sp,
-                fontWeight = FontWeight.Black
-            )
+        Text(
+            text = "DEGA LUDO",
+            color = Gold,
+            fontSize = 29.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
 
-            Text(
-                "ROYAL GOLD EDITION",
-                color = Color(0xFFC5CAD5),
-                fontSize = 10.sp,
-                letterSpacing = 3.sp
-            )
+        Text(
+            text = "ROYAL EDITION",
+            color = Color.LightGray,
+            fontSize = 11.sp,
+            letterSpacing = 4.sp
+        )
 
-            Spacer(Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (winner == -1) {
+            Text(
+                text = "عدد اللاعبين",
+                color = Color.White,
+                fontSize = 14.sp
+            )
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    "عدد اللاعبين",
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
-
-                Spacer(Modifier.width(8.dp))
-
                 listOf(2, 3, 4).forEach { count ->
                     Button(
                         onClick = {
                             playerCount = count
-                            restartGame()
+                            resetGame()
                         },
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .height(34.dp),
-                        contentPadding = PaddingValues(horizontal = 14.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor =
-                                if (playerCount == count)
-                                    Color(0xFFD4A83D)
-                                else Color(0xFF34435C)
+                                if (playerCount == count) Gold else Color.DarkGray,
+                            contentColor =
+                                if (playerCount == count) Navy else Color.White
                         )
                     ) {
-                        Text("$count")
+                        Text("$count لاعبين")
                     }
                 }
             }
+        }
 
-            Spacer(Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                activePlayers.forEach { player ->
-                    val isTurn = currentPlayer == player
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            for (i in 0 until playerCount) {
+                val active = currentPlayer == i && winner == -1
 
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(
-                                if (isTurn) Color(0xFF493719)
-                                else Color(0xFF202D43)
-                            )
-                            .padding(horizontal = 7.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(playerColors[player])
-                        )
-
-                        Spacer(Modifier.width(4.dp))
-
-                        Text(
-                            playerNames[player],
-                            color = if (isTurn)
-                                Color(0xFFFFD45C)
-                            else Color.White,
-                            fontSize = 10.sp,
-                            fontWeight = if (isTurn)
-                                FontWeight.Bold
-                            else FontWeight.Normal
-                        )
-
-                        if (isTurn) {
-                            Spacer(Modifier.width(5.dp))
-                            DiceOnTable(
-                                value = dice,
-                                enabled = pendingDice == 0 && winner == -1,
-                                onClick = { rollDice() },
-                                modifier = Modifier.size(37.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                LudoBoard(
-                    pieces = pieces,
-                    legalPieces = legalPieces,
-                    activePlayers = activePlayers,
-                    onPieceTap = { movePiece(it) },
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
+                        .weight(1f)
+                        .padding(3.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (active) playerColors[i].copy(alpha = 0.25f)
+                            else Color(0xFF202D49)
+                        )
+                        .padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(15.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(playerColors[i])
+                    )
+
+                    Text(
+                        text = playerNames[i],
+                        color = Color.White,
+                        fontSize = 11.sp
+                    )
+
+                    Text(
+                        text = "${pieces[i].count { it >= 56 }}/4",
+                        color = Gold,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LudoBoard(
+            pieces = pieces,
+            playerCount = playerCount,
+            currentPlayer = currentPlayer,
+            legalPieces = pendingMoves,
+            onPieceTap = { piece ->
+                movePiece(piece)
+            }
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "نرد ${playerNames[currentPlayer]}",
+                    color = playerColors[currentPlayer],
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(76.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Color.White, Color(0xFFE2E2E2))
+                            )
+                        )
+                        .clickable(
+                            enabled = pendingMoves.isEmpty() && winner == -1
+                        ) {
+                            rollDice()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (dice == 0) "🎲" else dice.toString(),
+                        color = Navy,
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        modifier = Modifier
+                            .offset(y = 0.dp)
+                    )
+                }
+
+                Text(
+                    text = "اضغط لرمي النرد",
+                    color = Color.LightGray,
+                    fontSize = 11.sp
                 )
             }
+        }
 
-            Spacer(Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
+        Text(
+            text = message,
+            color = Gold,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { resetGame() },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Gold,
+                contentColor = Navy
+            )
+        ) {
             Text(
-                message,
-                color = Color(0xFFFFD45C),
-                fontSize = 14.sp,
+                text = "لعبة جديدة",
                 fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                "الدور الحالي: ${playerNames[currentPlayer]}",
-                color = Color.White,
-                fontSize = 12.sp
-            )
-
-            if (winner != -1) {
-                Spacer(Modifier.height(5.dp))
-                Button(
-                    onClick = { restartGame() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFD4A83D)
-                    )
-                ) {
-                    Text("ابدأ مباراة جديدة")
-                }
-            }
-
-            Spacer(Modifier.height(5.dp))
-
-            Text(
-                "DEGA LUDO • LET'S PLAY",
-                color = Color.Gray,
-                fontSize = 9.sp
             )
         }
     }
@@ -410,406 +450,273 @@ fun DegaLudoGame() {
 
 @Composable
 private fun LudoBoard(
-    pieces: List<Int>,
+    pieces: List<List<Int>>,
+    playerCount: Int,
+    currentPlayer: Int,
     legalPieces: List<Int>,
-    activePlayers: List<Int>,
-    onPieceTap: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onPieceTap: (Int) -> Unit
 ) {
-    val animatedProgress = (0 until 16).map { index ->
-        animateFloatAsState(
-            targetValue = pieces[index].toFloat(),
-            animationSpec = tween(350),
-            label = "piece$index"
-        ).value
-    }
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF182541))
+            .pointerInput(
+                pieces,
+                currentPlayer,
+                legalPieces
+            ) {
+                detectTapGestures { tap ->
+                    val cell = size.width / 14f
 
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(13.dp))
-            .background(Color(0xFFD4A83D))
-            .padding(4.dp)
-    ) {
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(9.dp))
-                .background(Color(0xFFEEE8D8))
-                .pointerInput(pieces, legalPieces, activePlayers) {
-                    detectTapGestures { tap ->
-                        if (legalPieces.isEmpty()) return@detectTapGestures
+                    val tappedPiece = legalPieces.map { piece ->
+                        val position = piecePosition(
+                            currentPlayer,
+                            pieces[currentPlayer][piece],
+                            piece
+                        )
 
-                        val cell = size.width / 15f
+                        val center = Offset(
+                            (position.first + 0.5f) * cell,
+                            (position.second + 0.5f) * cell
+                        )
 
-                        val tapped = legalPieces.map { index ->
-                            val player = index / 4
-                            val piece = index % 4
-                            val point = piecePosition(
-                                player, piece, pieces[index]
-                            )
-                            val center = tokenCenter(point, piece, cell)
-                            val dx = tap.x - center.x
-                            val dy = tap.y - center.y
+                        val dx = tap.x - center.x
+                        val dy = tap.y - center.y
 
-                            Triple(
-                                index,
-                                dx * dx + dy * dy,
-                                cell * 0.58f
-                            )
-                        }.filter {
-                            it.second <= it.third * it.third
-                        }.minByOrNull { it.second }
+                        Triple(
+                            piece,
+                            dx * dx + dy * dy,
+                            cell * 0.48f
+                        )
+                    }.filter {
+                        it.second <= it.third * it.third
+                    }.minByOrNull {
+                        it.second
+                    }
 
-                        tapped?.let { onPieceTap(it.first) }
+                    if (tappedPiece != null) {
+                        onPieceTap(tappedPiece.first)
                     }
                 }
+            }
+    ) {
+        val cell = size.width / 14f
+
+        fun cellRect(x: Int, y: Int): Offset {
+            return Offset(x * cell, y * cell)
+        }
+
+        fun drawCell(
+            x: Int,
+            y: Int,
+            color: Color
         ) {
-            val cell = size.width / 15f
-
-            fun cellRect(
-                x: Int,
-                y: Int,
-                color: Color,
-                width: Int = 1,
-                height: Int = 1
-            ) {
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(x * cell, y * cell),
-                    size = Size(width * cell, height * cell),
-                    cornerRadius = CornerRadius(cell * 0.08f)
-                )
-
-                drawRoundRect(
-                    color = Color(0xFF26344A).copy(alpha = 0.2f),
-                    topLeft = Offset(x * cell, y * cell),
-                    size = Size(width * cell, height * cell),
-                    cornerRadius = CornerRadius(cell * 0.08f),
-                    style = androidx.compose.ui.graphics.drawscope.Stroke(
-                        width = cell * 0.035f
-                    )
-                )
-            }
-
-            fun homeArea(x: Int, y: Int, color: Color) {
-                drawRoundRect(
-                    brush = Brush.verticalGradient(
-                        listOf(color, color.copy(alpha = 0.72f)),
-                        startY = y * cell,
-                        endY = (y + 6) * cell
-                    ),
-                    topLeft = Offset(x * cell, y * cell),
-                    size = Size(6 * cell, 6 * cell),
-                    cornerRadius = CornerRadius(cell * 0.4f)
-                )
-
-                drawRoundRect(
-                    color = Color(0xFFFFFDF4),
-                    topLeft = Offset(
-                        (x + 0.65f) * cell,
-                        (y + 0.65f) * cell
-                    ),
-                    size = Size(4.7f * cell, 4.7f * cell),
-                    cornerRadius = CornerRadius(cell * 0.25f)
-                )
-
-                drawRoundRect(
-                    color = color.copy(alpha = 0.15f),
-                    topLeft = Offset(
-                        (x + 0.9f) * cell,
-                        (y + 0.9f) * cell
-                    ),
-                    size = Size(4.2f * cell, 4.2f * cell),
-                    cornerRadius = CornerRadius(cell * 0.2f)
-                )
-            }
-
-            homeArea(0, 0, playerColors[0])
-            homeArea(9, 0, playerColors[1])
-            homeArea(9, 9, playerColors[2])
-            homeArea(0, 9, playerColors[3])
-
-            track.forEachIndexed { index, point ->
-                val color = when (index) {
-                    0 -> playerColors[0]
-                    13 -> playerColors[1]
-                    26 -> playerColors[2]
-                    39 -> playerColors[3]
-                    else -> Color(0xFFFFFDF4)
-                }
-
-                cellRect(point.second, point.first, color)
-
-                if (index in safeSquares) {
-                    drawCircle(
-                        color = Color(0xFFD4A83D),
-                        radius = cell * 0.2f,
-                        center = Offset(
-                            (point.second + 0.5f) * cell,
-                            (point.first + 0.5f) * cell
-                        )
-                    )
-                }
-            }
-
-            homeLanes.forEachIndexed { player, lane ->
-                lane.forEach { point ->
-                    cellRect(
-                        point.second,
-                        point.first,
-                        playerColors[player]
-                    )
-                }
-            }
-
-            drawRoundRect(
-                color = Color(0xFF17243D),
-                topLeft = Offset(6 * cell, 6 * cell),
-                size = Size(3 * cell, 3 * cell),
-                cornerRadius = CornerRadius(cell * 0.2f)
+            drawRect(
+                color = color,
+                topLeft = cellRect(x, y),
+                size = Size(cell, cell)
             )
 
-            drawCircle(
-                brush = Brush.radialGradient(
-                    listOf(
-                        Color(0xFFFFE89A),
-                        Color(0xFFD4A83D),
-                        Color(0xFF8A6422)
-                    ),
-                    center = Offset(7.5f * cell, 7.5f * cell),
-                    radius = cell * 1.25f
-                ),
-                radius = cell * 1.05f,
-                center = Offset(7.5f * cell, 7.5f * cell)
+            drawRect(
+                color = Color.White.copy(alpha = 0.25f),
+                topLeft = cellRect(x, y),
+                size = Size(cell, cell),
+                style = Stroke(width = 1f)
             )
+        }
 
-            for (player in activePlayers) {
-                for (piece in 0 until 4) {
-                    val point = homeSlots[player][piece]
-                    val center = Offset(
-                        (point.second + 0.5f) * cell,
-                        (point.first + 0.5f) * cell
+        // خلفية اللوحة
+        drawRect(
+            color = Color(0xFFF4EBDD),
+            size = size
+        )
+
+        // بيوت اللاعبين
+        val baseColors = listOf(
+            Red,
+            Green,
+            Yellow,
+            Blue
+        )
+
+        drawRect(
+            color = Red.copy(alpha = 0.85f),
+            topLeft = Offset(0f, 0f),
+            size = Size(cell * 6, cell * 6)
+        )
+
+        drawRect(
+            color = Green.copy(alpha = 0.85f),
+            topLeft = Offset(cell * 8, 0f),
+            size = Size(cell * 6, cell * 6)
+        )
+
+        drawRect(
+            color = Blue.copy(alpha = 0.85f),
+            topLeft = Offset(0f, cell * 8),
+            size = Size(cell * 6, cell * 6)
+        )
+
+        drawRect(
+            color = Yellow.copy(alpha = 0.85f),
+            topLeft = Offset(cell * 8, cell * 8),
+            size = Size(cell * 6, cell * 6)
+        )
+
+        // مساحات القطع داخل البيوت
+        for (player in 0..3) {
+            for (slot in homeSlots(player)) {
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.9f),
+                    radius = cell * 0.39f,
+                    center = Offset(
+                        (slot.first + 0.5f) * cell,
+                        (slot.second + 0.5f) * cell
                     )
+                )
 
+                drawCircle(
+                    color = baseColors[player],
+                    radius = cell * 0.29f,
+                    center = Offset(
+                        (slot.first + 0.5f) * cell,
+                        (slot.second + 0.5f) * cell
+                    ),
+                    style = Stroke(width = cell * 0.09f)
+                )
+            }
+        }
+
+        // مسار اللعب الخارجي
+        track.forEachIndexed { index, point ->
+            val color = when (index) {
+                0 -> Red
+                13 -> Green
+                26 -> Yellow
+                39 -> Blue
+                else -> Color.White
+            }
+
+            drawCell(
+                point.first,
+                point.second,
+                color
+            )
+        }
+
+        // المسارات الداخلية
+        for (player in 0..3) {
+            val lane = homeLane(player)
+
+            lane.forEach { point ->
+                drawCell(
+                    point.first,
+                    point.second,
+                    baseColors[player]
+                )
+            }
+        }
+
+        // مركز الفوز
+        drawCircle(
+            color = Gold,
+            radius = cell * 1.05f,
+            center = Offset(cell * 7.5f, cell * 7.5f)
+        )
+
+        drawCircle(
+            color = Navy,
+            radius = cell * 0.65f,
+            center = Offset(cell * 7.5f, cell * 7.5f)
+        )
+
+        // القطع
+        for (player in 0 until playerCount) {
+            for (piece in 0..3) {
+                val step = pieces[player][piece]
+
+                if (step >= 56) continue
+
+                val position = piecePosition(
+                    player,
+                    step,
+                    piece
+                )
+
+                val center = Offset(
+                    (position.first + 0.5f) * cell,
+                    (position.second + 0.5f) * cell
+                )
+
+                val isSelectable =
+                    player == currentPlayer &&
+                    piece in legalPieces
+
+                val radius = cell * 0.31f
+
+                if (isSelectable) {
                     drawCircle(
-                        color = playerColors[player].copy(alpha = 0.2f),
-                        radius = cell * 0.37f,
+                        color = Gold,
+                        radius = radius * 1.45f,
                         center = center
                     )
                 }
-            }
 
-            for (player in activePlayers) {
-                for (piece in 0 until 4) {
-                    val index = player * 4 + piece
-                    val progress = animatedProgress[index]
-                        .toInt().coerceIn(-1, 57)
-
-                    val point = piecePosition(player, piece, progress)
-                    val center = tokenCenter(point, piece, cell)
-                    val selectable = index in legalPieces
-                    val radius = cell * if (selectable) 0.38f else 0.32f
-
-                    drawOval(
-                        color = Color.Black.copy(alpha = 0.3f),
-                        topLeft = Offset(
-                            center.x - radius * 0.82f,
-                            center.y + radius * 0.35f
-                        ),
-                        size = Size(radius * 1.65f, radius * 0.55f)
-                    )
-
-                    drawCircle(
-                        color = playerColors[player].copy(alpha = 0.65f),
-                        radius = radius,
-                        center = Offset(
-                            center.x,
-                            center.y + cell * 0.07f
-                        )
-                    )
-
-                    drawOval(
-                        brush = Brush.verticalGradient(
-                            listOf(
-                                playerColors[player].copy(alpha = 0.75f),
-                                playerColors[player],
-                                playerColors[player].copy(alpha = 0.65f)
-                            ),
-                            startY = center.y - radius,
-                            endY = center.y + radius
-                        ),
-                        topLeft = Offset(
-                            center.x - radius * 0.7f,
-                            center.y - radius * 0.15f
-                        ),
-                        size = Size(
-                            radius * 1.4f,
-                            radius * 1.35f
-                        )
-                    )
-
-                    drawCircle(
-                        brush = Brush.linearGradient(
-                            listOf(
-                                Color.White.copy(alpha = 0.85f),
-                                playerColors[player],
-                                playerColors[player].copy(alpha = 0.65f)
-                            ),
-                            start = Offset(
-                                center.x - radius,
-                                center.y - radius
-                            ),
-                            end = Offset(
-                                center.x + radius,
-                                center.y + radius
-                            )
-                        ),
-                        radius = radius * 0.68f,
-                        center = Offset(
-                            center.x,
-                            center.y - radius * 0.48f
-                        )
-                    )
-
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.65f),
-                        radius = radius * 0.16f,
-                        center = Offset(
-                            center.x - radius * 0.28f,
-                            center.y - radius * 0.7f
-                        )
-                    )
-
-                    if (selectable) {
-                        drawCircle(
-                            color = Color(0xFFFFE36B),
-                            radius = radius * 1.25f,
-                            center = center,
-                            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                                width = cell * 0.07f
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-private fun tokenCenter(
-    point: Pair<Int, Int>,
-    piece: Int,
-    cell: Float
-): Offset {
-    val offsets = listOf(
-        -0.13f to -0.13f,
-        0.13f to -0.13f,
-        -0.13f to 0.13f,
-        0.13f to 0.13f
-    )
-
-    val offset = offsets[piece % 4]
-
-    return Offset(
-        (point.second + 0.5f + offset.first) * cell,
-        (point.first + 0.5f + offset.second) * cell
-    )
-}
-
-@Composable
-private fun DiceOnTable(
-    value: Int,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    var rolling by remember { mutableIntStateOf(0) }
-
-    val rotation by animateFloatAsState(
-        targetValue = if (rolling % 2 == 0) 0f else 360f,
-        animationSpec = tween(450),
-        label = "diceRotation"
-    )
-
-    val scale by animateFloatAsState(
-        targetValue = if (rolling % 2 == 0) 1f else 1.16f,
-        animationSpec = tween(220),
-        label = "diceScale"
-    )
-
-    Box(
-        modifier = modifier
-            .graphicsLayer {
-                rotationZ = rotation
-                scaleX = scale
-                scaleY = scale
-            }
-            .clip(RoundedCornerShape(11.dp))
-            .background(Color(0xFFD4A83D))
-            .clickable(enabled = enabled) {
-                rolling++
-                onClick()
-            }
-            .padding(4.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val side = size.minDimension * 0.9f
-            val left = (size.width - side) / 2f
-            val top = (size.height - side) / 2f
-
-            drawRoundRect(
-                color = Color.Black.copy(alpha = 0.35f),
-                topLeft = Offset(left + 3.dp.toPx(), top + 4.dp.toPx()),
-                size = Size(side, side),
-                cornerRadius = CornerRadius(side * 0.2f)
-            )
-
-            drawRoundRect(
-                brush = Brush.linearGradient(
-                    listOf(
-                        Color.White,
-                        Color(0xFFE9E9E9),
-                        Color(0xFFC7CBD2)
-                    ),
-                    start = Offset(left, top),
-                    end = Offset(left + side, top + side)
-                ),
-                topLeft = Offset(left, top),
-                size = Size(side, side),
-                cornerRadius = CornerRadius(side * 0.2f)
-            )
-
-            val positions = listOf(
-                0.25f to 0.25f,
-                0.75f to 0.25f,
-                0.25f to 0.75f,
-                0.75f to 0.75f,
-                0.5f to 0.5f,
-                0.25f to 0.5f,
-                0.75f to 0.5f
-            )
-
-            val visible = when (value) {
-                1 -> listOf(4)
-                2 -> listOf(0, 3)
-                3 -> listOf(0, 4, 3)
-                4 -> listOf(0, 1, 2, 3)
-                5 -> listOf(0, 1, 2, 3, 4)
-                else -> listOf(0, 1, 2, 3, 5, 6)
-            }
-
-            visible.forEach { index ->
-                val position = positions[index]
+                // ظل القطعة
                 drawCircle(
-                    color = Color(0xFF17243D),
-                    radius = side * 0.085f,
+                    color = Color.Black.copy(alpha = 0.35f),
+                    radius = radius,
                     center = Offset(
-                        left + side * position.first,
-                        top + side * position.second
+                        center.x + cell * 0.06f,
+                        center.y + cell * 0.08f
                     )
+                )
+
+                // جسم القطعة بتدرج لامع
+                drawCircle(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.8f),
+                            baseColors[player],
+                            baseColors[player].copy(alpha = 0.7f)
+                        ),
+                        start = Offset(
+                            center.x - radius,
+                            center.y - radius
+                        ),
+                        end = Offset(
+                            center.x + radius,
+                            center.y + radius
+                        )
+                    ),
+                    radius = radius,
+                    center = center
+                )
+
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.7f),
+                    radius = radius * 0.22f,
+                    center = Offset(
+                        center.x - radius * 0.3f,
+                        center.y - radius * 0.35f
+                    )
+                )
+
+                drawCircle(
+                    color = Color.Black.copy(alpha = 0.2f),
+                    radius = radius,
+                    center = center,
+                    style = Stroke(width = 1.5f)
                 )
             }
         }
+
+        // إطار ذهبي
+        drawRect(
+            color = Gold,
+            style = Stroke(width = 5f)
+        )
     }
 }
