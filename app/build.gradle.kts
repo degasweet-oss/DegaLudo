@@ -20,6 +20,17 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // توحيد إصدار Java على 17
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    // توحيد إصدار Kotlin على 17
+    kotlinOptions {
+        jvmTarget = "17"
+    }
 }
 
 dependencies {
