@@ -5,703 +5,455 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.random.Random
 
-private val Red = Color(0xFFE94B55)
-private val Green = Color(0xFF24B879)
-private val Yellow = Color(0xFFFFC542)
-private val Blue = Color(0xFF438BEE)
-private val Gold = Color(0xFFFFD166)
-private val Dark = Color(0xFF101827)
-private val Panel = Color(0xFF1C293B)
-private val SoftText = Color(0xFFB8C5D6)
+private val Navy = Color(0xFF10182B)
+private val DeepNavy = Color(0xFF080F1D)
+private val Gold = Color(0xFFFFC857)
+private val RedPlayer = Color(0xFFE84A5F)
+private val GreenPlayer = Color(0xFF25B879)
+private val YellowPlayer = Color(0xFFFFC344)
+private val BluePlayer = Color(0xFF4389ED)
 
-private val playerPalette = listOf(Red, Green, Yellow, Blue)
+private data class Player(
+    val name: String,
+    val color: Color
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(
-                    primary = Gold,
-                    background = Dark,
-                    surface = Panel
+            DegaApp()
+        }
+    }
+}
+
+@Composable
+fun DegaApp() {
+    val players = listOf(
+        Player("الأحمر", RedPlayer),
+        Player("الأخضر", GreenPlayer),
+        Player("الأصفر", YellowPlayer),
+        Player("الأزرق", BluePlayer)
+    )
+
+    var currentPlayer by remember { mutableIntStateOf(0) }
+    var diceNumber by remember { mutableIntStateOf(1) }
+    var rotation by remember { mutableFloatStateOf(0f) }
+    var rolling by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf("home") }
+    var coins by remember { mutableIntStateOf(2500) }
+    var gems by remember { mutableIntStateOf(50) }
+
+    val diceRotation by animateFloatAsState(
+        targetValue = rotation,
+        animationSpec = tween(durationMillis = 700),
+        label = "diceRotation"
+    )
+
+    MaterialTheme {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Navy, DeepNavy)
+                    )
                 )
-            ) {
-                DegaApp()
+        ) {
+            when (page) {
+                "game" -> GameScreen(
+                    players = players,
+                    currentPlayer = currentPlayer,
+                    diceNumber = diceNumber,
+                    diceRotation = diceRotation,
+                    rolling = rolling,
+                    onRoll = {
+                        if (!rolling) {
+                            rolling = true
+                            diceNumber = Random.nextInt(1, 7)
+                            rotation += 720f
+                            rolling = false
+                            if (diceNumber != 6) {
+                                currentPlayer =
+                                    (currentPlayer + 1) % players.size
+                            }
+                        }
+                    },
+                    onBack = { page = "home" }
+                )
+
+                "store" -> SimplePage(
+                    title = "متجر DEGA",
+                    description = "العملات الذهبية والجواهر والخلفيات",
+                    onBack = { page = "home" }
+                )
+
+                "tournaments" -> SimplePage(
+                    title = "البطولات",
+                    description = "استعد للمنافسة والفوز بالجوائز",
+                    onBack = { page = "home" }
+                )
+
+                "profile" -> SimplePage(
+                    title = "الملف الشخصي",
+                    description = "ملف اللاعب والإحصائيات",
+                    onBack = { page = "home" }
+                )
+
+                else -> HomeScreen(
+                    coins = coins,
+                    gems = gems,
+                    onPlay = { page = "game" },
+                    onStore = { page = "store" },
+                    onTournaments = { page = "tournaments" },
+                    onProfile = { page = "profile" }
+                )
             }
         }
     }
 }
 
-private enum class Page {
-    HOME, MODE, SETUP, GAME, SHOP, TOURNAMENTS,
-    PROFILE, FRIENDS, MISSIONS, HISTORY, SETTINGS
-}
-
 @Composable
-private fun DegaApp() {
-    var page by remember { mutableStateOf(Page.HOME) }
-    var playerCount by remember { mutableIntStateOf(2) }
-    var names by remember {
-        mutableStateOf(
-            listOf(
-                "اللاعب الأحمر",
-                "اللاعب الأزرق",
-                "اللاعب الأصفر",
-                "اللاعب الأخضر"
-            )
-        )
-    }
-
-    when (page) {
-        Page.HOME -> HomeScreen(
-            onPlay = { page = Page.MODE },
-            onShop = { page = Page.SHOP },
-            onTournaments = { page = Page.TOURNAMENTS },
-            onProfile = { page = Page.PROFILE },
-            onFriends = { page = Page.FRIENDS },
-            onMissions = { page = Page.MISSIONS },
-            onHistory = { page = Page.HISTORY },
-            onSettings = { page = Page.SETTINGS }
-        )
-
-        Page.MODE -> ModeScreen(
-            onBack = { page = Page.HOME },
-            onSelectLocal = { page = Page.SETUP }
-        )
-
-        Page.SETUP -> SetupScreen(
-            playerCount = playerCount,
-            names = names,
-            onCount = { playerCount = it },
-            onNames = { names = it },
-            onBack = { page = Page.MODE },
-            onStart = { page = Page.GAME }
-        )
-
-        Page.GAME -> GameScreen(
-            playerCount = playerCount,
-            names = names,
-            onBack = { page = Page.HOME }
-        )
-
-        Page.SHOP -> SimpleScreen(
-            "متجر DEGA",
-            "العملات الذهبية والجواهر والخلفيات ستتوفر هنا.",
-            "🛍️"
-        ) { page = Page.HOME }
-
-        Page.TOURNAMENTS -> SimpleScreen(
-            "البطولات",
-            "ستظهر البطولات والجوائز هنا عند تفعيل نظام المسابقات.",
-            "🏆"
-        ) { page = Page.HOME }
-
-        Page.PROFILE -> SimpleScreen(
-            "الملف الشخصي",
-            "ملف اللاعب والإحصائيات والمستوى.",
-            "👤"
-        ) { page = Page.HOME }
-
-        Page.FRIENDS -> SimpleScreen(
-            "الأصدقاء",
-            "قائمة الأصدقاء والدعوات ستتوفر عند تفعيل الاتصال.",
-            "👥"
-        ) { page = Page.HOME }
-
-        Page.MISSIONS -> SimpleScreen(
-            "المهام اليومية",
-            "أكمل المهام واجمع المكافآت.",
-            "🎯"
-        ) { page = Page.HOME }
-
-        Page.HISTORY -> SimpleScreen(
-            "سجل المباريات",
-            "سيظهر سجل مبارياتك هنا.",
-            "📜"
-        ) { page = Page.HOME }
-
-        Page.SETTINGS -> SimpleScreen(
-            "الإعدادات",
-            "إعدادات الصوت واللغة والحساب.",
-            "⚙️"
-        ) { page = Page.HOME }
-    }
-}
-
-@Composable
-private fun ScreenFrame(
-    title: String,
-    onBack: (() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit
+fun HomeScreen(
+    coins: Int,
+    gems: Int,
+    onPlay: () -> Unit,
+    onStore: () -> Unit,
+    onTournaments: () -> Unit,
+    onProfile: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Dark)
-            .verticalScroll(rememberScrollState())
-            .padding(18.dp)
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (onBack != null) {
+            Column {
                 Text(
-                    "‹",
+                    "DEGA",
                     color = Gold,
-                    fontSize = 36.sp,
-                    modifier = Modifier
-                        .clickable { onBack() }
-                        .padding(end = 12.dp)
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    "LUDO",
+                    color = Color.White,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
-            Text(
-                title,
-                color = Color.White,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text("🪙 $coins", color = Gold, fontWeight = FontWeight.Bold)
+                Text("💎 $gems", color = Color.Cyan)
+            }
         }
 
-        Spacer(Modifier.height(18.dp))
-        content()
-    }
-}
+        Spacer(Modifier.height(35.dp))
 
-@Composable
-private fun HomeScreen(
-    onPlay: () -> Unit,
-    onShop: () -> Unit,
-    onTournaments: () -> Unit,
-    onProfile: () -> Unit,
-    onFriends: () -> Unit,
-    onMissions: () -> Unit,
-    onHistory: () -> Unit,
-    onSettings: () -> Unit
-) {
-    ScreenFrame("DEGA LUDO") {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(150.dp)
-                .clip(RoundedCornerShape(24.dp))
+                .height(210.dp)
+                .clip(RoundedCornerShape(28.dp))
                 .background(
-                    androidx.compose.ui.graphics.Brush.linearGradient(
+                    Brush.linearGradient(
                         listOf(
-                            Color(0xFF263D60),
-                            Color(0xFF151F32),
-                            Color(0xFF513B20)
+                            Color(0xFF263B60),
+                            Color(0xFF111C34),
+                            Color(0xFF392B48)
                         )
                     )
                 ),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🎲", fontSize = 48.sp)
+                Text("🎲", fontSize = 65.sp)
                 Text(
                     "DEGA LUDO",
                     color = Gold,
-                    fontSize = 30.sp,
+                    fontSize = 29.sp,
                     fontWeight = FontWeight.Black
                 )
-                Text("PLAY • WIN • ENJOY", color = Color.White, fontSize = 12.sp)
+                Text(
+                    "استمتع بالتحدي",
+                    color = Color.White.copy(alpha = 0.8f)
+                )
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BalanceCard("🪙", "العملات", "1,250", Modifier.weight(1f))
-            BalanceCard("💎", "الجواهر", "25", Modifier.weight(1f))
-        }
-
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(28.dp))
 
         Button(
             onClick = onPlay,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp),
-            shape = RoundedCornerShape(18.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                .height(65.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Gold,
+                contentColor = Navy
+            )
         ) {
             Text(
-                "🎮  العب الآن",
-                color = Dark,
-                fontSize = 21.sp,
-                fontWeight = FontWeight.Bold
+                "العب الآن  🎮",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black
             )
         }
 
-        Spacer(Modifier.height(18.dp))
-        Text(
-            "اكتشف DEGA LUDO",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(22.dp))
 
-        FeatureRow("🛍️", "المتجر", "الخلفيات والعملات", onShop)
-        FeatureRow("🏆", "البطولات", "تحديات وجوائز", onTournaments)
-        FeatureRow("👤", "الملف الشخصي", "بياناتك وإحصائياتك", onProfile)
-        FeatureRow("👥", "الأصدقاء", "الأصدقاء والدعوات", onFriends)
-        FeatureRow("🎯", "المهام اليومية", "اجمع المكافآت", onMissions)
-        FeatureRow("📜", "سجل المباريات", "مبارياتك السابقة", onHistory)
-        FeatureRow("⚙️", "الإعدادات", "تخصيص اللعبة", onSettings)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HomeTile("🛒", "المتجر", Modifier.weight(1f), onStore)
+            HomeTile("🏆", "البطولات", Modifier.weight(1f), onTournaments)
+        }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(12.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            HomeTile("👤", "حسابي", Modifier.weight(1f), onProfile)
+            HomeTile("🎁", "المكافآت", Modifier.weight(1f)) {}
+        }
+
+        Spacer(Modifier.weight(1f))
+
         Text(
-            "DEGA LUDO • إصدار تجريبي",
-            color = SoftText,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            fontSize = 12.sp
+            "DEGA LUDO • PLAY TO WIN",
+            color = Color.Gray,
+            fontSize = 11.sp
         )
     }
 }
 
 @Composable
-private fun BalanceCard(
+fun HomeTile(
     emoji: String,
-    label: String,
-    amount: String,
-    modifier: Modifier = Modifier
+    title: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Panel)
-            .padding(14.dp)
+            .height(105.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFF1A2942))
+            .clickable { onClick() }
+            .padding(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Text("$emoji  $label", color = SoftText, fontSize = 13.sp)
+        Text(emoji, fontSize = 29.sp)
+        Spacer(Modifier.height(5.dp))
+        Text(title, color = Color.White, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun GameScreen(
+    players: List<Player>,
+    currentPlayer: Int,
+    diceNumber: Int,
+    diceRotation: Float,
+    rolling: Boolean,
+    onRoll: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "‹",
+                color = Color.White,
+                fontSize = 36.sp,
+                modifier = Modifier.clickable { onBack() }
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                "DEGA LUDO",
+                color = Gold,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.weight(1f))
+            Text("⚙", color = Color.White, fontSize = 25.sp)
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        PlayerBar(
+            player = players[currentPlayer],
+            diceNumber = diceNumber,
+            diceRotation = diceRotation,
+            rolling = rolling,
+            onRoll = onRoll
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        LudoBoard(
+            players = players,
+            currentPlayer = currentPlayer,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(Modifier.height(12.dp))
+
         Text(
-            amount,
-            color = Gold,
-            fontSize = 22.sp,
+            "دور اللاعب ${players[currentPlayer].name}",
+            color = players[currentPlayer].color,
+            fontSize = 19.sp,
             fontWeight = FontWeight.Bold
         )
-    }
-}
 
-@Composable
-private fun FeatureRow(
-    emoji: String,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp)
-            .clip(RoundedCornerShape(15.dp))
-            .background(Panel)
-            .clickable { onClick() }
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(emoji, fontSize = 28.sp)
-        Spacer(Modifier.width(14.dp))
+        Spacer(Modifier.height(8.dp))
 
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            Text(subtitle, color = SoftText, fontSize = 12.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            players.forEachIndexed { index, player ->
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .size(35.dp)
+                            .clip(CircleShape)
+                            .background(player.color),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "${index + 1}",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text(
+                        player.name,
+                        color = if (index == currentPlayer) Gold else Color.LightGray,
+                        fontSize = 11.sp
+                    )
+                }
+            }
         }
 
-        Text("›", color = Gold, fontSize = 28.sp)
-    }
-}
-
-@Composable
-private fun ModeScreen(
-    onBack: () -> Unit,
-    onSelectLocal: () -> Unit
-) {
-    ScreenFrame("اختر طريقة اللعب", onBack) {
-        ModeCard(
-            "🎲",
-            "لعب محلي",
-            "العب مع أصدقائك على نفس الهاتف",
-            true,
-            onSelectLocal
-        )
-
-        ModeCard(
-            "🤖",
-            "ضد الكمبيوتر",
-            "سيتم تفعيل اللعب ضد الكمبيوتر في تحديث لاحق",
-            false
-        ) {}
-
-        ModeCard(
-            "🌐",
-            "أونلاين مع الأصدقاء",
-            "اللعب عبر الإنترنت قيد التطوير",
-            false
-        ) {}
-    }
-}
-
-@Composable
-private fun ModeCard(
-    emoji: String,
-    title: String,
-    subtitle: String,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 7.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(Panel)
-            .clickable(enabled = enabled) { onClick() }
-            .padding(18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(emoji, fontSize = 34.sp)
-        Spacer(Modifier.width(14.dp))
-
-        Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                color = if (enabled) Color.White else SoftText,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp
-            )
-            Text(subtitle, color = SoftText, fontSize = 12.sp)
-        }
+        Spacer(Modifier.weight(1f))
 
         Text(
-            if (enabled) "ابدأ ›" else "قريبًا",
-            color = if (enabled) Gold else SoftText,
+            "اضغط على النرد لرميه",
+            color = Color.LightGray,
             fontSize = 13.sp
         )
     }
 }
 
 @Composable
-private fun SetupScreen(
-    playerCount: Int,
-    names: List<String>,
-    onCount: (Int) -> Unit,
-    onNames: (List<String>) -> Unit,
-    onBack: () -> Unit,
-    onStart: () -> Unit
+fun PlayerBar(
+    player: Player,
+    diceNumber: Int,
+    diceRotation: Float,
+    rolling: Boolean,
+    onRoll: () -> Unit
 ) {
-    ScreenFrame("إعداد اللاعبين", onBack) {
-        Text(
-            "عدد اللاعبين",
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(2, 3, 4).forEach { count ->
-                Button(
-                    onClick = { onCount(count) },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (playerCount == count) Gold else Panel
-                    )
-                ) {
-                    Text(
-                        "$count",
-                        color = if (playerCount == count) Dark else Color.White
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-        Text(
-            "أسماء اللاعبين",
-            color = Color.White,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.height(8.dp))
-
-        repeat(playerCount) { index ->
-            OutlinedTextField(
-                value = names[index],
-                onValueChange = { value ->
-                    onNames(
-                        names.toMutableList().also {
-                            it[index] = value
-                        }
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 5.dp),
-                label = { Text("اللاعب ${index + 1}") },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    focusedBorderColor = Gold,
-                    unfocusedBorderColor = SoftText,
-                    focusedLabelColor = Gold,
-                    unfocusedLabelColor = SoftText
-                )
-            )
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        Button(
-            onClick = onStart,
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF1A2942))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(player.color),
+            contentAlignment = Alignment.Center
         ) {
+            Text("♟", color = Color.White, fontSize = 23.sp)
+        }
+
+        Spacer(Modifier.width(10.dp))
+
+        Column {
             Text(
-                "ابدأ المباراة",
-                color = Dark,
-                fontSize = 18.sp,
+                player.name,
+                color = Color.White,
                 fontWeight = FontWeight.Bold
             )
-        }
-    }
-}
-
-@Composable
-private fun GameScreen(
-    playerCount: Int,
-    names: List<String>,
-    onBack: () -> Unit
-) {
-    var currentPlayer by remember { mutableIntStateOf(0) }
-    var dice by remember { mutableIntStateOf(1) }
-    var hasRolled by remember { mutableStateOf(false) }
-    var message by remember { mutableStateOf("اضغط على النرد لبدء اللعب") }
-
-    val positions = remember {
-        mutableStateListOf<Int>().apply {
-            repeat(16) { add(0) }
-        }
-    }
-
-    val diceRotation by animateFloatAsState(
-        targetValue = if (hasRolled) 360f else 0f,
-        label = "diceRotation"
-    )
-
-    val colors = playerPalette.take(playerCount)
-    val currentColor = colors[currentPlayer]
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Dark)
-            .verticalScroll(rememberScrollState())
-            .padding(12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "‹",
-                color = Gold,
-                fontSize = 34.sp,
-                modifier = Modifier
-                    .clickable { onBack() }
-                    .padding(end = 12.dp)
+                "دورك الآن",
+                color = player.color,
+                fontSize = 12.sp
             )
+        }
 
-            Column(Modifier.weight(1f)) {
-                Text(
-                    "DEGA LUDO",
-                    color = Gold,
-                    fontSize = 21.sp,
-                    fontWeight = FontWeight.Black
+        Spacer(Modifier.weight(1f))
+
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .graphicsLayer {
+                    rotationX = diceRotation
+                    rotationY = diceRotation * 0.7f
+                    rotationZ = diceRotation * 0.2f
+                    cameraDistance = 12f * density
+                }
+                .clip(RoundedCornerShape(13.dp))
+                .background(
+                    Brush.linearGradient(
+                        listOf(Color.White, Color(0xFFD7DFEA))
+                    )
                 )
-                Text("مباراة محلية", color = SoftText, fontSize = 12.sp)
-            }
-
-            Text("🪙 1,250", color = Gold, fontWeight = FontWeight.Bold)
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            repeat(playerCount) { index ->
-                val color = colors[index]
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(
-                            if (currentPlayer == index) {
-                                color.copy(alpha = 0.24f)
-                            } else {
-                                Panel
-                            }
-                        )
-                        .border(
-                            width = if (currentPlayer == index) 2.dp else 1.dp,
-                            color = if (currentPlayer == index) {
-                                color
-                            } else {
-                                Color.Transparent
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Box(
-                        Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                    )
-
-                    Text(
-                        names[index],
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        maxLines = 1
-                    )
-
-                    Text(
-                        if (currentPlayer == index) "دورك" else " ",
-                        color = Gold,
-                        fontSize = 10.sp
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        LudoBoard(
-            playerCount = playerCount,
-            positions = positions,
-            onPieceTap = { pieceIndex ->
-                val start = currentPlayer * 4
-                val end = start + 4
-
-                if (pieceIndex in start until end && hasRolled) {
-                    val old = positions[pieceIndex]
-
-                    if (old > 0 || dice == 6) {
-                        positions[pieceIndex] =
-                            if (old == 0) 1 else (old + dice).coerceAtMost(57)
-
-                        hasRolled = false
-
-                        message = if (positions[pieceIndex] >= 57) {
-                            "وصلت قطعة إلى النهاية!"
-                        } else {
-                            "تم تحريك القطعة"
-                        }
-
-                        if (dice != 6) {
-                            currentPlayer = (currentPlayer + 1) % playerCount
-                        }
-                    } else {
-                        message = "تحتاج إلى رقم 6 لإخراج القطعة"
-                    }
-                }
-            }
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+                .clickable(enabled = !rolling) { onRoll() },
+            contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    "دور ${names[currentPlayer]}",
-                    color = currentColor,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(message, color = SoftText, fontSize = 12.sp)
-            }
-
-            Spacer(Modifier.width(18.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(76.dp)
-                    .shadow(10.dp, RoundedCornerShape(18.dp))
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(Color.White)
-                    .clickable {
-                        if (!hasRolled) {
-                            dice = Random.nextInt(1, 7)
-                            hasRolled = true
-                            message = "ظهر الرقم $dice — اختر قطعة"
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    diceFace(dice),
-                    color = Dark,
-                    fontSize = 42.sp,
-                    modifier = Modifier.offset(
-                        x = (diceRotation % 2).dp
-                    )
-                )
-            }
+            Text(
+                diceFace(diceNumber),
+                fontSize = 35.sp,
+                color = Color(0xFF17243A)
+            )
         }
-
-        Spacer(Modifier.height(12.dp))
-
-        Text(
-            "بعد رمي النرد، اضغط على إحدى قطع لون اللاعب الحالي لتحريكها.",
-            color = SoftText,
-            fontSize = 11.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
     }
 }
 
-private fun diceFace(value: Int): String {
-    return when (value) {
+fun diceFace(number: Int): String {
+    return when (number) {
         1 -> "⚀"
         2 -> "⚁"
         3 -> "⚂"
@@ -711,285 +463,259 @@ private fun diceFace(value: Int): String {
     }
 }
 
-private val trackCells = listOf(
-    6 to 1, 6 to 2, 6 to 3, 6 to 4, 6 to 5,
-    5 to 6, 4 to 6, 3 to 6, 2 to 6, 1 to 6, 0 to 6,
-    0 to 7, 0 to 8, 1 to 8, 2 to 8, 3 to 8, 4 to 8, 5 to 8,
-    6 to 9, 6 to 10, 6 to 11, 6 to 12, 6 to 13, 6 to 14,
-    7 to 14, 8 to 14, 8 to 13, 8 to 12, 8 to 11, 8 to 10, 8 to 9,
-    9 to 8, 10 to 8, 11 to 8, 12 to 8, 13 to 8, 14 to 8,
-    14 to 7, 14 to 6, 13 to 6, 12 to 6, 11 to 6, 10 to 6, 9 to 6,
-    8 to 5, 8 to 4, 8 to 3, 8 to 2, 8 to 1, 8 to 0,
-    7 to 0
-)
-
 @Composable
-private fun LudoBoard(
-    playerCount: Int,
-    positions: List<Int>,
-    onPieceTap: (Int) -> Unit
+fun LudoBoard(
+    players: List<Player>,
+    currentPlayer: Int,
+    modifier: Modifier = Modifier
 ) {
-    val boardColors = listOf(Red, Green, Yellow, Blue)
-
     Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .aspectRatio(1f)
-            .shadow(12.dp, RoundedCornerShape(12.dp))
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xFFF2F0E9))
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF26354B))
     ) {
         val cell = size.width / 15f
+        val boardSize = size.width
 
+        fun cellRect(
+            col: Int,
+            row: Int,
+            color: Color
+        ) {
+            drawRoundRect(
+                color = color,
+                topLeft = Offset(col * cell, row * cell),
+                size = androidx.compose.ui.geometry.Size(cell, cell),
+                cornerRadius = CornerRadius(cell * 0.08f)
+            )
+        }
+
+        // القاعدة الخارجية
         drawRoundRect(
-            color = Color(0xFFF4F1E8),
+            color = Color(0xFF17243A),
             size = size,
-            cornerRadius = CornerRadius(18f, 18f)
+            cornerRadius = CornerRadius(24f)
         )
 
-        fun cellRect(row: Int, col: Int, color: Color) {
+        // بيوت اللاعبين الأربعة
+        val homes = listOf(
+            Triple(0, 0, RedPlayer),
+            Triple(9, 0, GreenPlayer),
+            Triple(0, 9, BluePlayer),
+            Triple(9, 9, YellowPlayer)
+        )
+
+        homes.forEach { (x, y, color) ->
             drawRoundRect(
                 color = color,
-                topLeft = Offset(col * cell + 1f, row * cell + 1f),
-                size = Size(cell - 2f, cell - 2f),
-                cornerRadius = CornerRadius(3f, 3f)
+                topLeft = Offset(x * cell, y * cell),
+                size = androidx.compose.ui.geometry.Size(
+                    6 * cell,
+                    6 * cell
+                ),
+                cornerRadius = CornerRadius(12f)
             )
+
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.92f),
+                topLeft = Offset(
+                    (x + 1) * cell,
+                    (y + 1) * cell
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    4 * cell,
+                    4 * cell
+                ),
+                cornerRadius = CornerRadius(12f)
+            )
+
+            val tokenPositions = listOf(
+                Offset((x + 2) * cell, (y + 2) * cell),
+                Offset((x + 4) * cell, (y + 2) * cell),
+                Offset((x + 2) * cell, (y + 4) * cell),
+                Offset((x + 4) * cell, (y + 4) * cell)
+            )
+
+            tokenPositions.forEach { pos ->
+                drawCircle(
+                    color = color.copy(alpha = 0.25f),
+                    radius = cell * 0.43f,
+                    center = Offset(
+                        pos.x + cell / 2,
+                        pos.y + cell / 2 + 3f
+                    )
+                )
+                drawCircle(
+                    color = color,
+                    radius = cell * 0.34f,
+                    center = Offset(
+                        pos.x + cell / 2,
+                        pos.y + cell / 2
+                    )
+                )
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.55f),
+                    radius = cell * 0.11f,
+                    center = Offset(
+                        pos.x + cell * 0.39f,
+                        pos.y + cell * 0.38f
+                    )
+                )
+            }
         }
 
-        cellRect(0, 0, Red)
-        cellRect(0, 9, Green)
-        cellRect(9, 0, Blue)
-        cellRect(9, 9, Yellow)
+        // مسارات اللعب
+        for (row in 0 until 15) {
+            for (col in 0 until 15) {
+                val onTrack =
+                    (row in 6..8 || col in 6..8) &&
+                    !(row in 0..5 && col in 0..5) &&
+                    !(row in 0..5 && col in 9..14) &&
+                    !(row in 9..14 && col in 0..5) &&
+                    !(row in 9..14 && col in 9..14)
 
-        val bases = listOf(
-            Triple(1, 1, Color.White),
-            Triple(1, 10, Color.White),
-            Triple(10, 1, Color.White),
-            Triple(10, 10, Color.White)
-        )
-
-        bases.forEach { (r, c, color) ->
-            drawRoundRect(
-                color = color,
-                topLeft = Offset(c * cell, r * cell),
-                size = Size(cell * 4, cell * 4),
-                cornerRadius = CornerRadius(10f, 10f)
-            )
-
-            for (i in 0..1) {
-                for (j in 0..1) {
-                    drawCircle(
-                        color = Color(0xFFE6E8EB),
-                        radius = cell * 0.34f,
-                        center = Offset(
-                            (c + 1.25f + j * 1.5f) * cell,
-                            (r + 1.25f + i * 1.5f) * cell
-                        )
+                if (onTrack) {
+                    cellRect(
+                        col,
+                        row,
+                        Color(0xFFF5F2EA)
+                    )
+                    drawRoundRect(
+                        color = Color(0xFFD2D6DF),
+                        topLeft = Offset(col * cell, row * cell),
+                        size = androidx.compose.ui.geometry.Size(
+                            cell,
+                            cell
+                        ),
+                        cornerRadius = CornerRadius(cell * 0.08f),
+                        style = Stroke(width = 1.2f)
                     )
                 }
             }
         }
 
-        trackCells.forEachIndexed { index, pair ->
-            val (r, c) = pair
-
-            val special = when (index) {
-                0 -> Red
-                13 -> Green
-                26 -> Yellow
-                39 -> Blue
-                else -> Color.White
-            }
-
-            cellRect(r, c, special)
-
-            drawRect(
-                color = Color(0xFFB8B8B8),
-                topLeft = Offset(c * cell, r * cell),
-                size = Size(cell, cell),
-                style = Stroke(width = 1f)
-            )
+        // المسارات النهائية الملونة
+        for (i in 0..5) {
+            cellRect(7, i + 1, RedPlayer)
+            cellRect(7, 13 - i, YellowPlayer)
+            cellRect(i + 1, 7, BluePlayer)
+            cellRect(13 - i, 7, GreenPlayer)
         }
 
-        for (i in 1..5) {
-            cellRect(7, i, Red)
-            cellRect(i, 7, Green)
-            cellRect(7, 14 - i, Yellow)
-            cellRect(14 - i, 7, Blue)
+        // مركز الطاولة
+        val center = boardSize / 2f
+        val path = Path().apply {
+            moveTo(center, center)
+            lineTo(6 * cell, 6 * cell)
+            lineTo(9 * cell, 6 * cell)
+            close()
         }
+        drawPath(path, GreenPlayer)
 
-        val center = Offset(size.width / 2f, size.height / 2f)
+        val path2 = Path().apply {
+            moveTo(center, center)
+            lineTo(9 * cell, 6 * cell)
+            lineTo(9 * cell, 9 * cell)
+            close()
+        }
+        drawPath(path2, YellowPlayer)
 
-        drawCircle(Color(0xFF26364B), cell * 1.45f, center)
+        val path3 = Path().apply {
+            moveTo(center, center)
+            lineTo(9 * cell, 9 * cell)
+            lineTo(6 * cell, 9 * cell)
+            close()
+        }
+        drawPath(path3, BluePlayer)
+
+        val path4 = Path().apply {
+            moveTo(center, center)
+            lineTo(6 * cell, 9 * cell)
+            lineTo(6 * cell, 6 * cell)
+            close()
+        }
+        drawPath(path4, RedPlayer)
+
         drawCircle(
-            Gold,
-            cell * 0.95f,
-            center,
-            style = Stroke(width = cell * 0.12f)
+            color = Gold,
+            radius = cell * 0.38f,
+            center = Offset(center, center)
         )
-        drawCircle(Color.White, cell * 0.35f, center)
+        drawCircle(
+            color = Color.White,
+            radius = cell * 0.16f,
+            center = Offset(center, center)
+        )
 
-        val startOffsets = listOf(0, 13, 26, 39)
-
-        for (player in 0 until playerCount) {
-            for (piece in 0 until 4) {
-                val index = player * 4 + piece
-                val progress = positions.getOrElse(index) { 0 }
-
-                val baseOffset = when (player) {
-                    0 -> Offset(
-                        2.2f + (piece % 2) * 1.6f,
-                        2.2f + (piece / 2) * 1.6f
-                    )
-
-                    1 -> Offset(
-                        10f + (piece % 2) * 1.6f,
-                        2.2f + (piece / 2) * 1.6f
-                    )
-
-                    2 -> Offset(
-                        10f + (piece % 2) * 1.6f,
-                        10f + (piece / 2) * 1.6f
-                    )
-
-                    else -> Offset(
-                        2.2f + (piece % 2) * 1.6f,
-                        10f + (piece / 2) * 1.6f
-                    )
-                }
-
-                val tokenCenter = if (progress <= 0) {
-                    Offset(baseOffset.x * cell, baseOffset.y * cell)
-                } else {
-                    val trackIndex =
-                        (startOffsets[player] + progress - 1) % trackCells.size
-                    val (r, c) = trackCells[trackIndex]
-
-                    Offset(
-                        (c + 0.5f) * cell,
-                        (r + 0.5f) * cell
-                    )
-                }
-
-                drawCircle(
-                    color = Color.Black.copy(alpha = 0.25f),
-                    radius = cell * 0.38f,
-                    center = tokenCenter + Offset(1.5f, 2.5f)
-                )
-
-                drawCircle(
-                    boardColors[player],
-                    cell * 0.34f,
-                    tokenCenter
-                )
-
-                drawCircle(
-                    Color.White,
-                    cell * 0.34f,
-                    tokenCenter,
-                    style = Stroke(width = 2f)
-                )
-
-                drawCircle(
-                    Color.White.copy(alpha = 0.65f),
-                    cell * 0.10f,
-                    tokenCenter + Offset(-cell * 0.1f, -cell * 0.1f)
-                )
-            }
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
-
-    Column {
-        repeat(playerCount) { player ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 3.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(boardColors[player])
-                )
-
-                Spacer(Modifier.width(6.dp))
-
-                Text(
-                    "اللاعب ${player + 1}",
-                    color = Color.White,
-                    fontSize = 11.sp
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                repeat(4) { piece ->
-                    val pieceIndex = player * 4 + piece
-
-                    Text(
-                        "● ${piece + 1}",
-                        color = boardColors[player],
-                        fontSize = 12.sp,
-                        modifier = Modifier
-                            .padding(horizontal = 3.dp)
-                            .clip(RoundedCornerShape(7.dp))
-                            .background(Panel)
-                            .clickable {
-                                onPieceTap(pieceIndex)
-                            }
-                            .padding(horizontal = 7.dp, vertical = 5.dp)
-                    )
-                }
-            }
-        }
+        // حدود خارجية
+        drawRoundRect(
+            color = Gold.copy(alpha = 0.8f),
+            size = size,
+            cornerRadius = CornerRadius(24f),
+            style = Stroke(width = 4f)
+        )
     }
 }
 
 @Composable
-private fun SimpleScreen(
+fun SimplePage(
     title: String,
     description: String,
-    emoji: String,
     onBack: () -> Unit
 ) {
-    ScreenFrame(title, onBack) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(190.dp)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Panel),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(emoji, fontSize = 54.sp)
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    title,
-                    color = Gold,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        Spacer(Modifier.height(18.dp))
-        Text(description, color = SoftText, fontSize = 15.sp)
-        Spacer(Modifier.height(22.dp))
-
-        Button(
-            onClick = onBack,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(22.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "العودة للرئيسية",
-                color = Dark,
+                "‹",
+                color = Color.White,
+                fontSize = 35.sp,
+                modifier = Modifier.clickable { onBack() }
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                title,
+                color = Gold,
+                fontSize = 23.sp,
                 fontWeight = FontWeight.Bold
             )
         }
+
+        Spacer(Modifier.height(80.dp))
+
+        Text("🎮", fontSize = 65.sp)
+
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            title,
+            color = Color.White,
+            fontSize = 27.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text(
+            description,
+            color = Color.LightGray,
+            fontSize = 15.sp
+        )
+
+        Spacer(Modifier.height(30.dp))
+
+        Text(
+            "سيتم تطوير هذه الصفحة في المرحلة القادمة",
+            color = Gold,
+            fontSize = 13.sp
+        )
     }
 }
