@@ -60,6 +60,7 @@ private val homeLanes = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
@@ -82,8 +83,11 @@ private enum class Page {
 private fun DegaApp() {
     var page by remember { mutableStateOf(Page.HOME) }
     var count by remember { mutableIntStateOf(2) }
+
     var names by remember {
-        mutableStateOf(listOf("الأحمر", "الأخضر", "الأصفر", "الأزرق"))
+        mutableStateOf(
+            listOf("الأحمر", "الأخضر", "الأصفر", "الأزرق")
+        )
     }
 
     when (page) {
@@ -112,13 +116,17 @@ private fun DegaApp() {
             "متجر DEGA",
             "العملات والجواهر والخلفيات",
             "🛍️"
-        ) { page = Page.HOME }
+        ) {
+            page = Page.HOME
+        }
 
         Page.OTHER -> InfoScreen(
             "قريبًا",
             "الأصدقاء والبطولات والمهام",
             "🏆"
-        ) { page = Page.HOME }
+        ) {
+            page = Page.HOME
+        }
     }
 }
 
@@ -184,12 +192,14 @@ private fun HomeScreen(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("🎲", fontSize = 62.sp)
+
                 Text(
                     "DEGA LUDO",
                     color = Gold,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Black
                 )
+
                 Text("PLAY • WIN • ENJOY", color = Color.White)
             }
         }
@@ -245,6 +255,7 @@ private fun Balance(
             .padding(16.dp)
     ) {
         Text(icon, fontSize = 23.sp)
+
         Text(
             amount,
             color = Gold,
@@ -271,14 +282,18 @@ private fun MenuItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(icon, fontSize = 25.sp)
+
         Spacer(Modifier.width(14.dp))
+
         Text(
             title,
             color = Color.White,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
+
         Spacer(Modifier.weight(1f))
+
         Text("›", color = Gold, fontSize = 26.sp)
     }
 }
@@ -303,7 +318,11 @@ private fun SetupScreen(
 
         Spacer(Modifier.height(24.dp))
 
-        Text("عدد اللاعبين", color = Color.White, fontSize = 17.sp)
+        Text(
+            "عدد اللاعبين",
+            color = Color.White,
+            fontSize = 17.sp
+        )
 
         Spacer(Modifier.height(10.dp))
 
@@ -326,14 +345,20 @@ private fun SetupScreen(
 
         Spacer(Modifier.height(22.dp))
 
-        Text("أسماء اللاعبين", color = Color.White, fontSize = 17.sp)
+        Text(
+            "أسماء اللاعبين",
+            color = Color.White,
+            fontSize = 17.sp
+        )
 
         repeat(count) { i ->
             OutlinedTextField(
                 value = names[i],
                 onValueChange = { value ->
                     onNames(
-                        names.toMutableList().also { it[i] = value }
+                        names.toMutableList().also {
+                            it[i] = value
+                        }
                     )
                 },
                 modifier = Modifier
@@ -372,16 +397,12 @@ private fun legalPieces(
 ): List<Int> {
     return (0..3).filter { piece ->
         val p = positions[player * 4 + piece]
+
         (p == 0 && dice == 6) ||
             (p in 1..56 && p + dice <= 57)
     }
 }
 
-/*
- * تصحيح مهم:
- * إحداثيات البيوت مخزنة كصف ثم عمود.
- * الرسم على الشاشة يحتاج X = العمود و Y = الصف.
- */
 private fun boardPoint(
     player: Int,
     progress: Int,
@@ -389,19 +410,37 @@ private fun boardPoint(
     cell: Float
 ): Offset {
     if (progress == 0) {
-        val home = when (player) {
-            0 -> 2.2f to 2.2f
-            1 -> 2.2f to 10.2f
-            2 -> 10.2f to 10.2f
-            else -> 10.2f to 2.2f
+        val row: Float
+        val col: Float
+
+        when (player) {
+            0 -> {
+                row = 2.2f
+                col = 2.2f
+            }
+
+            1 -> {
+                row = 2.2f
+                col = 11.2f
+            }
+
+            2 -> {
+                row = 11.2f
+                col = 11.2f
+            }
+
+            else -> {
+                row = 11.2f
+                col = 2.2f
+            }
         }
 
-        val row = home.first + piece / 2 * 1.6f
-        val col = home.second + piece % 2 * 1.6f
+        val finalRow = row + (piece / 2) * 1.6f
+        val finalCol = col + (piece % 2) * 1.6f
 
         return Offset(
-            (col + 0.0f) * cell,
-            (row + 0.0f) * cell
+            finalCol * cell,
+            finalRow * cell
         )
     }
 
@@ -444,7 +483,10 @@ private suspend fun movePiece(
 
     if (target in 1..51) {
         val landing = (starts[player] + target - 1) % 52
-        val safe = landing in listOf(0, 8, 13, 21, 26, 34, 39, 47)
+
+        val safe = landing in listOf(
+            0, 8, 13, 21, 26, 34, 39, 47
+        )
 
         if (!safe) {
             for (other in 0 until playerCount) {
@@ -466,7 +508,11 @@ private suspend fun movePiece(
         }
     }
 
-    onWin((0..3).all { positions[player * 4 + it] == 57 })
+    onWin(
+        (0..3).all {
+            positions[player * 4 + it] == 57
+        }
+    )
 }
 
 @Composable
@@ -481,6 +527,7 @@ private fun GameScreen(
     var rolling by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var winner by remember { mutableIntStateOf(-1) }
+
     var message by remember {
         mutableStateOf("اضغط على النرد لبدء اللعب")
     }
@@ -562,6 +609,7 @@ private fun GameScreen(
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Black
                 )
+
                 Text(
                     "المباراة المحلية",
                     color = Color.LightGray,
@@ -578,11 +626,6 @@ private fun GameScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        /*
-         * بطاقة كل لاعب.
-         * النرد يظهر بجوار اللاعب صاحب الدور فقط.
-         * لا توجد عبارة دور اللاعب في أعلى الشاشة.
-         */
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(5.dp)
@@ -697,7 +740,7 @@ private fun GameScreen(
 }
 
 @Composable
-private fun PlayerCard(
+private fun RowScope.PlayerCard(
     name: String,
     color: Color,
     active: Boolean,
@@ -776,11 +819,12 @@ private fun Dice3D(
         label = "diceJump"
     )
 
-    val size = if (small) 42.dp else 70.dp
+    // تغيير الاسم حتى لا يحجب DrawScope.size داخل Canvas
+    val diceSize = if (small) 42.dp else 70.dp
 
     Box(
         Modifier
-            .size(size)
+            .size(diceSize)
             .graphicsLayer {
                 rotationZ = rotation
                 rotationX = if (rolling) rotation * .65f else 0f
@@ -814,52 +858,67 @@ private fun Dice3D(
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.fillMaxSize()) {
-            val w = size.width
-            val h = size.height
+            val w = this.size.width
+            val h = this.size.height
 
             drawRoundRect(
-                Color(0xFF7C8795).copy(alpha = .35f),
-                Offset(w * .08f, h * .09f),
-                Size(w * .84f, h * .84f),
+                color = Color(0xFF7C8795).copy(alpha = .35f),
+                topLeft = Offset(w * .08f, h * .09f),
+                size = Size(w * .84f, h * .84f),
                 cornerRadius = CornerRadius(w * .17f)
             )
 
             val points = when (value) {
                 1 -> listOf(.5f to .5f)
-                2 -> listOf(.28f to .28f, .72f to .72f)
+
+                2 -> listOf(
+                    .28f to .28f,
+                    .72f to .72f
+                )
+
                 3 -> listOf(
                     .28f to .28f,
                     .5f to .5f,
                     .72f to .72f
                 )
+
                 4 -> listOf(
-                    .28f to .28f, .72f to .28f,
-                    .28f to .72f, .72f to .72f
+                    .28f to .28f,
+                    .72f to .28f,
+                    .28f to .72f,
+                    .72f to .72f
                 )
+
                 5 -> listOf(
-                    .28f to .28f, .72f to .28f,
+                    .28f to .28f,
+                    .72f to .28f,
                     .5f to .5f,
-                    .28f to .72f, .72f to .72f
+                    .28f to .72f,
+                    .72f to .72f
                 )
+
                 else -> listOf(
-                    .28f to .25f, .72f to .25f,
-                    .28f to .5f, .72f to .5f,
-                    .28f to .75f, .72f to .75f
+                    .28f to .25f,
+                    .72f to .25f,
+                    .28f to .5f,
+                    .72f to .5f,
+                    .28f to .75f,
+                    .72f to .75f
                 )
             }
 
             points.forEach { (x, y) ->
                 drawCircle(
-                    Color(0xFF1C2735),
-                    w * .065f,
-                    Offset(w * x, h * y)
+                    color = Color(0xFF1C2735),
+                    radius = w * .065f,
+                    center = Offset(w * x, h * y)
                 )
             }
 
             drawRoundRect(
-                Color.White.copy(alpha = .55f),
-                Offset(w * .12f, h * .10f),
-                Size(w * .28f, h * .035f),
+                color = Color.White.copy(alpha = .55f),
+                topLeft = Offset(w * .12f, h * .10f),
+                size = Size(w * .28f, h * .035f),
                 cornerRadius = CornerRadius(w * .02f)
             )
         }
@@ -898,7 +957,9 @@ private fun LudoBoard(
                                 cell
                             )
 
-                            if ((tap - point).getDistance() < cell * .72f) {
+                            if (
+                                (tap - point).getDistance() < cell * .72f
+                            ) {
                                 onPieceTap(piece)
                                 return@detectTapGestures
                             }
@@ -913,20 +974,23 @@ private fun LudoBoard(
             val top = Offset(c * cell, r * cell)
 
             drawRect(
-                color,
-                top,
-                Size(cell, cell)
+                color = color,
+                topLeft = top,
+                size = Size(cell, cell)
             )
 
             drawRect(
-                Color(0xFFB9B2A6).copy(alpha = .65f),
-                top,
-                Size(cell, cell),
+                color = Color(0xFFB9B2A6).copy(alpha = .65f),
+                topLeft = top,
+                size = Size(cell, cell),
                 style = Stroke(1f)
             )
         }
 
-        drawRect(BoardBase, size = size)
+        drawRect(
+            color = BoardBase,
+            size = size
+        )
 
         // بيوت اللاعبين الأربعة
         val homes = listOf(
@@ -938,35 +1002,35 @@ private fun LudoBoard(
 
         homes.forEach { (r, c, color) ->
             drawRoundRect(
-                Brush.linearGradient(
+                brush = Brush.linearGradient(
                     listOf(
                         color.copy(alpha = .95f),
                         color,
                         color.copy(alpha = .85f)
                     )
                 ),
-                Offset(c * cell, r * cell),
-                Size(cell * 6, cell * 6),
+                topLeft = Offset(c * cell, r * cell),
+                size = Size(cell * 6, cell * 6),
                 cornerRadius = CornerRadius(cell * .30f)
             )
 
             drawRoundRect(
-                Color(0xFFFFFCF5),
-                Offset(
+                color = Color(0xFFFFFCF5),
+                topLeft = Offset(
                     (c + .72f) * cell,
                     (r + .72f) * cell
                 ),
-                Size(cell * 4.56f, cell * 4.56f),
+                size = Size(cell * 4.56f, cell * 4.56f),
                 cornerRadius = CornerRadius(cell * .28f)
             )
 
             drawRoundRect(
-                color.copy(alpha = .14f),
-                Offset(
+                color = color.copy(alpha = .14f),
+                topLeft = Offset(
                     (c + 1.02f) * cell,
                     (r + 1.02f) * cell
                 ),
-                Size(cell * 3.96f, cell * 3.96f),
+                size = Size(cell * 3.96f, cell * 3.96f),
                 cornerRadius = CornerRadius(cell * .25f)
             )
 
@@ -978,13 +1042,16 @@ private fun LudoBoard(
                     )
 
                     drawCircle(
-                        Color.Black.copy(alpha = .20f),
-                        cell * .47f,
-                        center + Offset(cell * .04f, cell * .07f)
+                        color = Color.Black.copy(alpha = .20f),
+                        radius = cell * .47f,
+                        center = center + Offset(
+                            cell * .04f,
+                            cell * .07f
+                        )
                     )
 
                     drawCircle(
-                        Brush.radialGradient(
+                        brush = Brush.radialGradient(
                             listOf(
                                 color.copy(alpha = .75f),
                                 color,
@@ -993,14 +1060,14 @@ private fun LudoBoard(
                             center = center,
                             radius = cell * .5f
                         ),
-                        cell * .39f,
-                        center
+                        radius = cell * .39f,
+                        center = center
                     )
 
                     drawCircle(
-                        Color.White.copy(alpha = .85f),
-                        cell * .39f,
-                        center,
+                        color = Color.White.copy(alpha = .85f),
+                        radius = cell * .39f,
+                        center = center,
                         style = Stroke(cell * .065f)
                     )
                 }
@@ -1065,13 +1132,16 @@ private fun LudoBoard(
                 close()
             }
 
-            drawPath(path, playerColors[i])
+            drawPath(
+                path = path,
+                color = playerColors[i]
+            )
         }
 
         drawCircle(
-            Gold,
-            cell * .17f,
-            center,
+            color = Gold,
+            radius = cell * .17f,
+            center = center,
             style = Stroke(cell * .06f)
         )
 
@@ -1098,36 +1168,39 @@ private fun LudoBoard(
 
                 if (selected) {
                     drawCircle(
-                        Gold.copy(alpha = .35f),
-                        radius * 1.65f,
-                        point
+                        color = Gold.copy(alpha = .35f),
+                        radius = radius * 1.65f,
+                        center = point
                     )
 
                     drawCircle(
-                        Gold,
-                        radius * 1.35f,
-                        point,
+                        color = Gold,
+                        radius = radius * 1.35f,
+                        center = point,
                         style = Stroke(cell * .08f)
                     )
                 }
 
                 // ظل القطعة
                 drawCircle(
-                    Color.Black.copy(alpha = .30f),
-                    radius,
-                    point + Offset(cell * .06f, cell * .10f)
+                    color = Color.Black.copy(alpha = .30f),
+                    radius = radius,
+                    center = point + Offset(
+                        cell * .06f,
+                        cell * .10f
+                    )
                 )
 
                 // قاعدة القطعة
                 drawCircle(
-                    playerColors[p].copy(alpha = .75f),
-                    radius * 1.12f,
-                    point + Offset(0f, cell * .035f)
+                    color = playerColors[p].copy(alpha = .75f),
+                    radius = radius * 1.12f,
+                    center = point + Offset(0f, cell * .035f)
                 )
 
                 // جسم القطعة بتدرج لوني
                 drawCircle(
-                    Brush.linearGradient(
+                    brush = Brush.linearGradient(
                         listOf(
                             Color.White.copy(alpha = .65f),
                             playerColors[p],
@@ -1136,23 +1209,23 @@ private fun LudoBoard(
                         start = point - Offset(radius, radius),
                         end = point + Offset(radius, radius)
                     ),
-                    radius,
-                    point
+                    radius = radius,
+                    center = point
                 )
 
                 // حافة لامعة
                 drawCircle(
-                    Color.White.copy(alpha = .85f),
-                    radius,
-                    point,
+                    color = Color.White.copy(alpha = .85f),
+                    radius = radius,
+                    center = point,
                     style = Stroke(cell * .045f)
                 )
 
                 // لمعة علوية
                 drawCircle(
-                    Color.White.copy(alpha = .70f),
-                    radius * .25f,
-                    point - Offset(
+                    color = Color.White.copy(alpha = .70f),
+                    radius = radius * .25f,
+                    center = point - Offset(
                         radius * .28f,
                         radius * .30f
                     )
